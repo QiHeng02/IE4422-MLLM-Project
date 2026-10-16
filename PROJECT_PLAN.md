@@ -1,64 +1,65 @@
 # Project guide
 
-The team's reference for this project. Read sections 1–3 once to understand the project. Come back to sections 4–12 whenever you work on it.
+The team's reference for this project. Read Section 0–3 once to understand the project. Use Section 7 and Section 10 when you work on a task.
+
+**If documents disagree:** the code and `configs/` show what is implemented. `docs/decisions.md` records what we decided and why. This guide must follow both; fix it when it does not.
 
 | Section | Read it when you want to know… |
 |---|---|
-| [0. Where we are](#0-where-we-are-updated-16-oct) | what's done, what's open, what's next |
+| [0. Status](#0-status-16-oct) | what is done, what is decided, what is still open |
 | [1. The project in one page](#1-the-project-in-one-page) | what we are doing and why |
-| [1b. Behaviours, rules and the rule table](#1b-behaviours-rules-and-the-rule-table) | the terms behind open decisions D1–D3 |
-| [2. Scope](#2-scope) | whether something is in, optional or out |
-| [3. Research questions](#3-research-questions-and-what-counts-as-a-result) | what we are trying to find out |
+| [1b. Key ideas](#1b-key-ideas) | question files, settings, behaviours, the flag table |
+| [2. Scope](#2-scope) | whether something is in or optional |
+| [3. Research questions](#3-research-questions) | what we are trying to find out, and what each result would mean |
 | [4. Model](#4-model) | how the model works and what we train |
-| [5. Datasets](#5-datasets) | which data, for what, and its status |
-| [6. Methods and baselines](#6-methods-and-baselines) | what we compare and why each one is there |
-| [7. Pipeline](#7-pipeline-step-by-step) | how to do each step, and when a step is "done" |
-| [8. Evaluation](#8-evaluation) | how scores are computed and the rules for fair results |
+| [5. Datasets](#5-datasets) | which data, for what, its status and its problems |
+| [6. Methods and baselines](#6-methods-and-baselines) | what we compare and why |
+| [7. Pipeline](#7-pipeline-step-by-step) | what each step does, what it makes, and when it is done |
+| [8. Evaluation](#8-evaluation) | how we score, and the rules for fair results |
 | [9. Lecture topics](#9-lecture-topics-applied) | which course topic each part applies |
-| [10. Timeline and to-do](#10-timeline-and-to-do) | what to do this week and who owns it |
-| [11. How to…](#11-how-to) | common tasks: run an experiment, change a rule, add a behaviour |
+| [10. Timeline and dependencies](#10-timeline-and-dependencies) | what to do this week, in what order, and who owns it |
+| [11. How to…](#11-how-to) | common tasks |
 | [12. Rules that keep results valid](#12-rules-that-keep-results-valid) | what NOT to do |
 | [13. Risks and fallbacks](#13-risks-and-fallbacks) | what to do when something breaks |
 
 ---
 
-## 0. Where we are (updated 16 Oct)
+## 0. Status (16 Oct)
 
 ### Done
-- [x] Topic confirmed: no overlap with other groups
-- [x] Repo, project guide, scripts and tests (5 passing)
-- [x] Cluster: `classroom` conda env, repo cloned, SCB data downloaded to `/projects/IE4422/data/scb`
-- [x] SCB checked: class counts (`inspect_scb.py`) and label quality by eye (20 images per class)
-- [x] Stakeholder email drafted (sends Sun 18 Oct; **update its rule table first**)
+- [x] Topic confirmed: no overlap with other groups.
+- [x] Repo with project guide, scripts and tests. `pytest -q`: 5 passed (16 Oct).
+- [x] Cluster: `classroom` conda env, repo cloned, SCB data in `/projects/IE4422/data/scb`.
+- [x] SCB checked: box counts per class (`inspect_scb.py`), and 20 photos each for 4 classes by eye (discuss, TurnHead, BowHead, hand-raising). `read` and `write` are not checked.
+- [x] Stakeholder email drafted (not in the repo). It still shows the old rule table, so update it before it goes out on Sun 18 Oct.
 
 ### Decided
-- **Two problems, one model:** (1) class attention, (2) invigilation. See [§1](#1-the-project-in-one-page).
-- **Phone / computer usage data are not in the public SCB release.** Therefore we use other datasets to add them (§5).
+- **Two problems, one model:** class attention and invigilation (`decisions.md` #17).
+- **Approach A** (`decisions.md` #22): one model for both settings; the text tells it which setting it is in. Research questions in Section3. agreed on 16 Oct. **The team confirms on Sat 17 Oct.**
+- **Phone / computer usage data are not in the public SCB release. Therefore we use other datasets to add them.** Phone comes from Roboflow exam_cheating. We found no labelled data for computer use, so we drop it (#21).
 
-### Open decisions (blocking the pipeline)
+### Open decisions
 
-| # | Decision | What it means | Needs | Owner |
+Each decision blocks a pipeline step (Section7). Settle D1, D2, D3 and D6 
+
+| # | Decision | Why it matters | Blocks | Needs first |
 |---|---|---|---|---|
-| D1 | **Behaviour list** | Which student actions the model looks for. See [§1b: Behaviours](#behaviours). | Task 2a result (§5) | team |
-| D2 | **Rule types**, and which one is held out | The situations the model is told about, e.g. "closed-book exam". See [§1b: Rule types](#rule-types). | team | team |
-| D3 | **Rule table** | For each behaviour × rule type: flag, OK or unused. See [§1b: The rule table](#the-rule-table). Stakeholder confirms it. | D1, D2 | team |
-| D4 | **YOLO baseline weights** | Use the SCB authors' YOLO models, or retrain on our split. See [§6](#6-methods-and-baselines) and `decisions.md` #16. | before week 2 | [ ] |
-
-### Next tasks
-1. **Task 2a:** check the Roboflow exam_cheating dataset (classes, quality, wide shot or close-up)
-2. **Team meeting:** D1–D3, then update `rules.csv`, class map and the stakeholder email
-3. **Task 3:** filter → split → build questions (first full pipeline run)
-4. **Task 4:** zero-shot Qwen baseline on the cluster
+| D1 | **Behaviour list** (see [Section1b](#behaviours)) | Only behaviours with boxes drawn by people can be scored | Step 1 (filter), D3 | Task 2a result |
+| D2 | **Settings**: which sentences the model gets, e.g. "This is a lecture." (see [Section1b](#settings)) | RQ2 only works if some answers change between settings | Step 2 (flag table), step 4 (questions) | team |
+| D3 | **Flag table**: for each behaviour in each setting, flag or OK (see [Section1b](#the-flag-table)) | It makes every answer key | Step 4 | D1, D2; Dr Lim confirms it |
+| D4 | **YOLO baseline**: train one YOLO on our training photos, or use the SCB authors' models | The authors' models are 3 separate models (one per SCB subset, older YOLO format with `exp/opt.yaml`). None covers the Roboflow classes, and our script loads one model. Their training photos may also be in our test set. **Recommendation: train our own.** | Step 5 (YOLO) | before 19 Oct |
+| D5 | **Third test dataset** (DIPSER): keep or drop? | SCB + Roboflow already give two datasets. DIPSER needs 100–200 photos labelled by hand. **Recommendation: optional.** | Week 2 labelling work | team |
+| D6 | **How to split Roboflow photos** | Roboflow exports can hold edited (augmented) copies of the same photo, and its file names probably do not match our video rule. Copies in both training and test would make test scores too high. | Step 3 (split) | Task 2a result |
 
 ---
 
 ## 1. The project in one page
 
 ### The problem
-In large educational settings, teacher or invigilators cannot continuously monitor dozens of students simultaneously
+In large classes and exam halls, a teacher or an invigilator cannot watch dozens of students at the same time.
 
-1. **Class attention.** A lecturer teaching a large class cannot see, while teaching, which students have drifted off-task (on a phone, talking, head down). 
-2. **Invigilation.** One invigilator watches dozens of candidates and cannot catch every phone, glance at a neighbour, or hidden note. 
+1. **Class attention.** A lecturer teaching a large class cannot see, while teaching, which students have drifted off-task (on a phone, talking, head down). *[add a cited figure: typical NTU lecture size]*
+2. **Invigilation.** One invigilator watches dozens of candidates and cannot catch every phone, glance at a neighbour, or hidden note. *[add a cited figure: invigilator-to-candidate ratio]*
 
 **Current tools fall short.** Detectors give each action **the same label everywhere**. But whether an action is a problem **depends on the situation**:
 - Talking is fine in a group discussion, off-task in a lecture.
@@ -66,71 +67,76 @@ In large educational settings, teacher or invigilators cannot continuously monit
 
 A fixed detector cannot tell these apart unless someone rewrites its rules in code for every situation.
 
-> **Problem statement.** Can a vision-language model take the current rule as plain text, for a lecture or an exam, and flag the students whose visible behaviour breaks it? And does fine-tuning keep the model reading that rule?
+> **Problem statement.** Can one vision-language model serve both lecturers and invigilators, switched only by a text instruction that says the setting? Does LoRA fine-tuning improve it without making it ignore that instruction?
 
-*"Attention" here means visible on-task behaviour in one photo. A single photo cannot show attention span or intent, and we never claim it does.*
 
 ### Our idea
-Give a vision-language model (VLM) **two inputs**: the photo, and the rule for the current situation written as text. The model flags students whose visible behaviour breaks **that** rule. The same photo can have different correct answers under different rules:
+The model gets **two inputs**: a photo, and one sentence that says the setting. It flags the students whose visible behaviour does not fit **that** setting. The same photo can have different correct answers:
 
-| Input 1: photo | Input 2: rule (text) | Correct output |
+| Input 1: photo | Input 2: setting (text) | Correct output (example only; real flags = D3) |
 |---|---|---|
-| Student A reading notes, student B looking at a neighbour | "This is a **closed-book** exam." | Flag A (reading notes) and B (looking around) |
-| *same photo* | "This is an **open-book** exam." | Flag B only |
-| *same photo* | "This is a **group discussion**." | Flag no one |
+| Student A talking, student B head down | "This is a **lecture**." | Flag A (talking) and B (head down) |
+| *same photo* | "This is an **exam**." | Flag A only (head down is normal when writing) |
+| Student C on a phone, student D reading notes | "This is a **closed-book exam**." | Flag C and D |
+| *same photo* | "This is a **lecture**." | Flag C only (reading is fine in a lecture) |
 
-The output is a box around each flagged student, the behaviour, and a one-line reason. A small script turns it into an annotated photo for a person to review.
+The output is a box around each flagged student, the behaviour, and a one-line reason. A small script draws this on the photo for a person to review.
 
-### Two applications, one model (agreed 16 Oct)
+### Two applications, one model
 
 | | **1. Class attention** | **2. Invigilation** |
 |---|---|---|
 | User | lecturers and TAs | exam invigilators |
-| Rule types | lesson types, e.g. lecture vs group discussion | exam types, e.g. closed-book vs open-book |
+| Settings | lesson types, e.g. lecture, group discussion | exam types, e.g. closed-book, open-book |
 | Behaviours (data permitting) | talking, turning head, head down, hand-raising | using phone, looking around, reading notes, talking |
 | Output wording | "may need a check", never "not paying attention" | "flag for review", never "cheating" |
 
-Both share one model and one pipeline; only the rule text differs. Invigilation gets extra exam data (phone, looking around, reading notes), so its experiments go deeper. Having both lesson and exam rules is also what makes the flip test meaningful.
-
-### The research question
-When we fine-tune the VLM with LoRA, does it **keep reading the rule**, or learn to answer from the picture alone? We also test a fix, **rule-contrastive training**: every training photo appears with every rule and its different answer.
+Both use one model and one pipeline; only the setting text differs. The research questions are in [Section3](#3-research-questions).
 
 ### Why it matters
-If the model reads the rule, an invigilator or lecturer adds a new rule by writing one sentence: no new code, no retraining. If it ignores the rule, it is just an expensive detector.
+- **One tool for two jobs.** The text decides the task, so the text input does real work (our main multimodal point).
+- **New situations need one sentence, not new code**, but only if the model really reads the text. RQ2 checks this.
+- **A wrong flag in an exam can harm a student.** RQ3 measures how often that happens.
 
 **Any result is a finding.** The course marks what we try, observe and explain, not whether the method wins.
 
 ---
 
-## 1b. Behaviours, rules and the rule table
+## 1b. Key ideas
 
-These three ideas are what open decisions D1–D3 (§0) are about.
+### Question files: how the model learns and is tested
+The model learns and is tested like a student: with **questions and answer keys**.
+- **One question** = one photo + one setting sentence + "Which students should be flagged?"
+- **Its answer key** = the boxes that people drew on that photo, kept only for behaviours the flag table marks `flag` in that setting.
+- A script (step 4) writes these into files. The **training** file teaches the model. The **validation** file helps us choose settings during the work. The **test** file gives the final scores, once.
+
+### Settings
+**What:** the sentence that tells the model where it is, e.g. "This is a lecture." Each setting is a column in the flag table.
+**Decision D2:** which settings, and how many. Minimum: one lesson setting and one exam setting. Open-book exam or group discussion can be added.
+**Held-out setting (optional):** a setting that we never use in training. Testing on it shows whether the model follows a setting it never saw. Not needed for RQ1–RQ3.
 
 ### Behaviours
 **What:** the visible student actions the model looks for, e.g. using phone, turning head, talking.
-**Why we must choose:** each behaviour needs **human-drawn boxes** in our data; those boxes are the correct answers we train and score on. A behaviour with no labels cannot be used. §5 lists what we have.
-**What makes a good one:** good label quality, and an answer that **changes with the rule** (see the rule table below).
+**Why we must choose (D1):** each behaviour needs **boxes drawn by people** in our data. Those boxes are the answer keys. A behaviour without boxes cannot be scored. Section5 lists what we have.
+**A good behaviour:** labels that are mostly correct, and a flag that **changes between settings** (next section).
 
-### Rule types
-**What:** the situations we tell the model about, written as one sentence, e.g. "This is a closed-book exam." We need about 3.
-**Held-out rule:** one rule type is **never used in training**. We only test on it, to see whether the model follows a rule it has never seen (the unseen-rule test, RQ2).
+### The flag table
+**What:** a grid that says, for each behaviour in each setting, `flag`, `ok` or `unused` (unclear, not scored). It is stored in `configs/rules.csv`.
 
-### The rule table
-**What:** a grid that says, for each behaviour in each rule type, whether it should be flagged:
+| Behaviour | Lecture | Closed-book exam |
+|---|---|---|
+| Head down | flag | ok |
+| Reading notes | ok | flag |
+| Using phone | flag | flag |
 
-| Behaviour | Closed-book exam | Open-book exam | Group discussion |
-|---|---|---|---|
-| Reading notes | flag | OK | OK |
-| Looking around | flag | flag | OK |
+*(Example only; the team fills in the real table, D3.)*
 
-*(Example only; the team fills in the real table, D3.)* Each cell is `flag`, `OK` or `unused` (unclear, not scored). It is stored in `configs/rules.csv`.
+**Why we need it:** the datasets only say *what* a student does ("head down"), not whether it is wrong. The table adds "wrong in this setting". It is used to:
+1. **make the answer keys** for every photo + setting (step 4),
+2. **run the YOLO baseline**, which applies the table as an if-statement (step 5),
+3. **check with the stakeholder** what should be flagged (round 1).
 
-**Why we need it:** the datasets only say *what* a student is doing ("reading notes"), not whether it is wrong. The table adds "wrong in this situation". It is used to:
-1. **make the correct answers** for every photo + rule (training and testing),
-2. **run the YOLO baseline**, which applies the table as an if-statement,
-3. **check requirements with the stakeholder** (round 1).
-
-**The key constraint:** a behaviour only tests rule reading if its row **changes across rule types**. A row that is `flag` everywhere (or `OK` everywhere) gives the same answer whatever the rule, so it cannot show whether the model reads the rule. Such rows can stay, but they don't help the flip test.
+**Key constraint for RQ2:** RQ2 asks whether the model uses the text or guesses the setting from the photo. To test this, **some rows must change between the lesson and exam columns, for photos from both datasets.** In the example, head down (SCB photos) and reading notes (Roboflow photos) do this. Using phone does not, so it cannot show whether the model reads the text.
 
 ---
 
@@ -138,22 +144,22 @@ These three ideas are what open decisions D1–D3 (§0) are about.
 
 | | Item |
 |---|---|
-| **In (must do)** | Single photos · ~4–6 behaviours (D1) × 3 rule types (D2), covering invigilation + class attention · Qwen2.5-VL-3B · zero-shot, few-shot, LoRA (normal + rule-contrastive) · YOLO + rule table baseline · flip test, unseen-rule test, reworded rules · SCB + one exam-behaviour dataset (§5) · one second test set · 2 stakeholder rounds · annotated-photo output |
-| **Optional (only if week 2 ends early)** | QLoRA · face-blur test · describe-then-reason prompt · second training seed · video-frame demo |
+| **In (must do)** | Single photos · ~4–6 behaviours (D1) × the settings in D2 · Qwen2.5-VL-3B · zero-shot, few-shot, LoRA (normal training) · YOLO + flag table baseline · text-switch test (RQ2) · false-flag rate on exam photos (RQ3) · SCB + Roboflow exam_cheating · 2 stakeholder rounds · annotated-photo output |
+| **Optional (only if week 2 ends early)** | Rule-contrastive LoRA (run B; only if RQ2 shows run A ignores the text, see Section6) · third test dataset (D5) · held-out setting · reworded-setting test · QLoRA · face-blur test · describe-then-reason prompt · second training seed · video-frame demo |
 
-**Rule of thumb.** If a task does not answer RQ1–RQ3 or serve a rubric row, it is out. Ask the team before adding scope.
+**Rule of thumb.** If a task does not answer RQ1–RQ3 or serve a rubric row, it is out. Ask the team before you add scope.
 
 ---
 
-## 3. Research questions and what counts as a result
+## 3. Research questions
 
-| RQ | Question | Experiment | Possible findings |
+| RQ | Question | Experiment | What each result would mean |
 |---|---|---|---|
-| **RQ1** | Does LoRA beat prompting? | zero-shot vs few-shot vs LoRA on known rules (`known_f1`) | LoRA higher → training teaches classroom cues. Similar → prompting is enough for this task. |
-| **RQ2** | Does LoRA keep the model reading the rule? Does rule-contrastive training help? | flip test, unseen-rule test, reworded rules | Normal LoRA drops on `unseen_f1` or `flip_acc` vs zero-shot → fine-tuning made it ignore text. Contrastive recovers it → our fix works. No drop → fine-tuning is safe here. |
-| **RQ3** | When is a VLM worth it over a detector? Does it transfer? | YOLO + rule table vs Qwen; best model on a second test set | YOLO wins known rules → detectors are better at finding objects. VLM wins new rules without code → its value is flexibility. Second-set drop → domain shift. |
+| **RQ1** | Does LoRA improve flagging over prompting alone, in both settings? | zero-shot vs few-shot vs LoRA; score lesson and exam settings separately | LoRA higher → training teaches cues that prompts cannot. Similar → prompting is enough. |
+| **RQ2** | Does the model use the text, or guess the setting from the photo? | **Text-switch test:** same photo, lesson text vs exam text. Do the answers change where the flag table says they should? Before and after LoRA. | Answers change → the model reads the text. No change → it uses the photo style (SCB = classrooms, Roboflow = exams). If LoRA makes this worse, try run B (Section6). |
+| **RQ3** | Is it safe enough for exams? | False-flag rate on exam photos with exam text: trained Qwen vs YOLO + flag table | Lower than YOLO → the VLM is safer for exams. Higher → state it as a limit for real use. |
 
-**Headline claim, honest form.** "We test whether LoRA fine-tuning keeps a VLM reading exam and lesson rules, and whether rule-contrastive training protects it." Never claim more than the numbers show.
+**Headline claim, honest form:** "We test whether one VLM can serve lecturers and invigilators by text alone, whether LoRA helps, and whether it keeps using the text." Never claim more than the numbers show.
 
 ---
 
@@ -167,7 +173,7 @@ How one question flows through the model:
 |---|---|---|---|---|
 | 1 | Photo | **Vision encoder** | Turns the image into image tokens | ❄️ frozen |
 | 2 | Image tokens | **Projector** | Maps image tokens into the language model's space | ❄️ frozen |
-| 3 | Rule + question (text) | **Text tokenizer** | Turns the words into text tokens | — |
+| 3 | Setting + question (text) | **Text tokenizer** | Turns the words into text tokens | — |
 | 4 | Image + text tokens | **Qwen2.5 language model** | Image and text tokens attend to each other in every layer (joint fusion) and write the answer | ❄️ frozen, **plus LoRA adapters 🔥 (the only trained part)** |
 | 5 | Model text | **JSON answer** | `flagged` list (box + behaviour) and a `reason` | — |
 | 6 | JSON | **Display script** | Draws boxes and a one-line summary for the reviewer | — (not part of the model) |
@@ -176,9 +182,9 @@ How one question flows through the model:
 |---|---|---|
 | Base model | Qwen2.5-VL-3B-Instruct | Fits one A40 (46 GB); has built-in box grounding; already verified in our earlier pipeline |
 | Trained part | LoRA, rank 8, on language-model linear layers | Small and fast; the vision side already sees well |
-| Frozen | Vision encoder, projector | Keeps the test about rule reading, not vision |
+| Frozen | Vision encoder, projector | Keeps training small; RQ2 is about text use, not vision |
 | Fusion type | Joint: image and text tokens attend to each other in every layer | Contrast with YOLO (late fusion) |
-| Input | photo (image) + lesson rule and question (text) | 2 modalities, as the rubric requires |
+| Input | photo (image) + setting and question (text) | 2 modalities, as the rubric requires |
 | Output | JSON: `flagged` list of `{bbox_2d, behaviour}` + `reason` | A script can score it exactly |
 | Box coordinates | Pixels of the image **after Qwen's resize** | That is how Qwen2.5-VL grounds boxes. `build.max_pixels` must match in training and inference. |
 | Decoding | Greedy (temperature 0) | Repeatable results |
@@ -192,39 +198,39 @@ How one question flows through the model:
 
 | Dataset | Role | Behaviours it labels | Licence | Status (16 Oct) |
 |---|---|---|---|---|
-| **SCB, Hugging Face release** | train, val, main test | discuss, TurnHead, BowHead, hand-raising, read, write | academic, non-commercial | ✅ downloaded and checked |
-| **Roboflow [exam_cheating](https://universe.roboflow.com/behavior-cheating/exam_cheating-keaor)** | extra data with **real exam scenes** | Use_phone, Look_around, Cheat_paper, Normal (~1,000 images) | CC BY 4.0 | ⏳ not checked (quality, wide shot vs close-up). Task 2a. |
-| **DIPSER** | second test only | none of ours: attention/emotion labels | CC BY 4.0 | not started; we hand-label 100–200 frames |
-| HCCB / other Roboflow sets | backup | varies | check | only if needed |
+| **SCB, Hugging Face release** | lesson photos: train, val, test | discuss, TurnHead, BowHead, hand-raising, read, write | academic, non-commercial | ✅ downloaded and checked |
+| **Roboflow [exam_cheating](https://universe.roboflow.com/behavior-cheating/exam_cheating-keaor)** | exam photos: train, val, test | Use_phone, Look_around, Cheat_paper, Normal (~1,000 images) | CC BY 4.0 | ⏳ not checked (Task 2a) |
+| **DIPSER** | third test set only (D5) | none of ours: attention/emotion labels | CC BY 4.0 | not started; would need 100–200 photos labelled by hand |
 
-SCB classes `talk`, `using the phone` and `using the computer` appear in the SCB paper but are not in the public release. Phone comes from Roboflow; no public source with human labels for computer use was found, so computer use is dropped.
+SCB classes `talk`, `using the phone` and `using the computer` appear in the SCB paper but are not in the public release.
 
 ### Behaviours: what we can label
 
-| Behaviour | Source | Label quality (20-image check) | Application |
+| Behaviour | Source | Label quality (20-photo check) | Application |
 |---|---|---|---|
 | Talking (`discuss`) | SCB | 20/20 | both |
 | Turning head (`TurnHead`) | SCB | 16/20 ⚠️ weakest | both |
 | Head down (`BowHead`) | SCB | 19/20 | attention |
 | Hand-raising | SCB | 19/20 | attention |
-| Reading / writing | SCB | not checked | both (reading notes) |
+| Reading / writing | SCB | not checked | both |
 | Using phone | Roboflow | not checked | invigilation |
 | Looking around | Roboflow | not checked | invigilation |
 | Reading notes (`Cheat_paper`) | Roboflow | not checked | invigilation |
 
-Counts in the HF release: discuss 5,392 boxes · TurnHead 11,156 · BowHead 4,962 · hand-raising 13,453 · read 24,078 · write 9,841.
+Box counts in the SCB release: discuss 5,392 · TurnHead 11,156 · BowHead 4,962 · hand-raising 13,453 · read 24,078 · write 9,841.
 
 ### Known data problems, and how we handle them
 
 | Problem | Handling |
 |---|---|
-| Each subset or dataset labels only its own classes | `filter_scb.py` records `labelled` per image; scoring ignores unlabelled behaviours |
-| Every Discuss image contains discussion: no "no one talking" examples | open: accept as limitation, or hand-check ~50 other images as negatives |
-| TurnHead labels ~80% correct | keep; state as limitation |
-| Frames from one video look almost identical; the same video appears in several subsets | split groups by video **across subsets** (`group_regex`); `--check-leakage` finds near-twins |
-| SCB shows lessons, not exams | exam rules on lesson photos are "imagined"; Roboflow adds real exam scenes |
-| Two photo styles if we add Roboflow (possibly close-ups) | flip test still valid (same photo, different rules); report style as a limitation |
-| SCB includes school-age students and Chinese classrooms | state as a limitation; second test set measures transfer |
+| Each dataset or subset labels only its own classes | `filter_scb.py` records `labelled` per photo; scoring ignores behaviours that photo's dataset does not label |
+| So talking is never scored on Roboflow photos, and phone is never scored on SCB photos | State it. RQ3 false flags cover only the behaviours Roboflow labels. |
+| Every Discuss photo contains discussion: no "no one talking" examples | Open: accept as a limitation, or check ~50 other SCB photos by hand and use them as "no one" examples |
+| TurnHead labels ~80% correct | Keep; state as a limitation |
+| Frames from one video look almost the same; one video appears in several SCB subsets | Split by video **across subsets** (`split.group_regex`); `--check-leakage` finds near-copies |
+| Roboflow exports may hold edited copies of one photo; its file names do not match our video rule | D6. Task 2a checks it. |
+| Two photo styles (classroom vs exam hall) | This is exactly what RQ2 tests: does the model use the text or the photo style? |
+| SCB includes school-age students and Chinese classrooms | State as a limitation |
 
 Download commands: `data/README.md`. Data is never committed.
 
@@ -232,162 +238,209 @@ Download commands: `data/README.md`. Data is never committed.
 
 ## 6. Methods and baselines
 
-All methods answer the **same test questions** and are scored by the **same script**.
+All methods answer the **same test questions** and the **same script** scores them.
 
-| Method | Reads rule text? | Why it is here | How to run |
+| Method | Reads the setting text? | Why it is here | How to run |
 |---|---|---|---|
-| **YOLO + rule table** | No; the rule table is code | Current approach (late fusion). Answers "why not a detector + if-statement?" Needs a hand-written column for every new lesson type. | `yolo_rules_baseline.py` |
-| **Qwen zero-shot** | Yes | Starting point. Also the reference for RQ2: did LoRA make rule-reading worse than this? | `run_vlm.py` |
+| **YOLO + flag table** | No; the table is code | The usual approach (late fusion). Answers "why not a detector + if-statement?" Reference for RQ3. | `yolo_rules_baseline.py` (one YOLO model; D4) |
+| **Qwen zero-shot** | Yes | Starting point for RQ1, and the "before" for RQ2 | `run_vlm.py` |
 | **Qwen few-shot** (2 examples) | Yes | Best result without training (RQ1) | `run_vlm.py --few-shot 2` |
-| **Qwen + LoRA, normal** (run A) | Yes | Standard fine-tuning: each training image with one random rule | `lora_single.yaml` |
-| **Qwen + LoRA, rule-contrastive** (run B, ours) | Yes | Each training image with every training rule → forces rule reading | `lora_contrastive.yaml` |
+| **Qwen + LoRA, normal** (run A) | Yes | Our trained model: each training photo with one random setting | `lora_single.yaml` |
+| *Optional:* **Qwen + LoRA, rule-contrastive** (run B) | Yes | A fix if run A ignores the text: each training photo with every setting | `lora_contrastive.yaml` |
 | *Optional:* QLoRA | Yes | GPU memory saved vs accuracy lost | add `quantization_bit: 4` to a LoRA config |
 
-**Fair comparison of runs A and B.** Run B has 2× the examples, so run A uses 2× the epochs. Both take about the same steps and see each image equally often. Only the rule pairing differs.
+**When to train run B.** Decide with the **validation** file, not the test file. After run A, run the text-switch check on val. Train run B only if run A's answers change with the text less often than zero-shot's do. If you decide after looking at test scores, the test scores are no longer fair.
+
+**Fair comparison of runs A and B.** Run B has 2× the examples, so run A uses 2× the epochs. Both see each photo equally often. Only the setting pairing differs.
 
 ---
 
 ## 7. Pipeline step by step
 
-Every script reads `configs/default.yaml`. Change settings there, never in code.
+Every script reads `configs/default.yaml`. Change settings there, never in code. Commands assume you are in the repo folder with the `classroom` env active.
 
-### Step 0. Check the data
-- **Why:** confirm the classes exist before building on them.
-- **Run:** `python scripts/inspect_scb.py --root data/raw/scb`
-- **Output:** `results/data_check/scb_inspect.md` (classes, counts, sample file names)
-- **Done when:** behaviour set decided (§0 D1); `scb_class_map` and `split.group_regex` set. *(SCB part done 16 Oct; `group_regex` set.)*
+### Prepare the data (steps 0–4)
 
-### Step 1. Filter
-- **Why:** keep only behaviours a lesson rule can allow or forbid.
-- **Run:** `python scripts/filter_scb.py`
-- **Output:** `data/processed/manifest.jsonl` (one line per image: size, subset, labelled behaviours, boxes)
-- **Done when:** every behaviour in `rules.csv` has boxes (no WARNING); ~50 images checked by eye.
+#### Step 0. Check each dataset
+- **You do:** run `python scripts/inspect_scb.py --root data/raw/scb`, then `scripts/preview_class.py` for each class (20 photos with the boxes drawn).
+- **Why:** to know which classes exist, how many boxes they have, and whether the boxes are right.
+- **Makes:** `results/data_check/scb_inspect.md` (counts and sample file names) and preview photos.
+- **Done when:** for each dataset you have counts and a "right out of 20" score per class. **SCB: done. Roboflow: Task 2a.**
 
-### Step 2. Rule table
-- **Why:** SCB says *what* a student does, not whether it is wrong. The table adds "wrong in this lesson". It makes the correct answers, drives the YOLO baseline, and is what the stakeholder confirms.
-- **Edit:** `configs/rules.csv` (cells: `flag`, `ok`, `unused` = ambiguous, not scored)
-- **Done when:** stakeholder round 1 confirms it; change logged in `docs/stakeholder_notes.md`. **Freeze it after this.**
+#### Step 1. Filter
+- **You do:** set `scb_class_map` in `default.yaml` (dataset class name → our behaviour name), then run `python scripts/filter_scb.py`.
+- **Why:** keeps only the boxes of the behaviours we use, under our names.
+- **Makes:** `data/processed/manifest.jsonl`: one line per photo, with its size, dataset, the behaviours that dataset labels, and the kept boxes.
+- **Used by:** steps 3 and 4.
+- **Waits for:** D1. Every behaviour in `rules.csv` must be in the class map.
+- **Done when:** the script prints no `WARNING: no boxes`.
 
-### Step 3–4. Split and make questions
-- **Why:** a VLM needs question + answer pairs; splitting by video stops leakage; the held-out rule stays out of training for the unseen-rule test.
-- **Run:** `python scripts/split_data.py --check-leakage` then `python scripts/build_questions.py`
-- **Output:** `data/processed/questions/`: `train_single`, `train_contrastive`, `val`, `test`, `test_reworded` (.jsonl)
-- **Done when:** leakage report reviewed; both subsets appear in test; positive rate per lesson type noted in the experiment log.
+#### Step 2. Flag table and settings
+- **You do:** write the D3 table into `configs/rules.csv` (one column per setting). Write one sentence and 2 reworded versions per setting under `contexts:` in `default.yaml`. List the settings in `train_contexts` (and in `heldout_contexts` if you hold one out).
+- **Why:** step 4 uses these to make the answer keys and the question text.
+- **Note:** both files still hold the **old design** (computer lab, using computer). They must change before step 4. Check that the question text in `default.yaml` (`question:`) suits exam settings too; it says "this lesson".
+- **Waits for:** D2, D3.
+- **Done when:** Dr Lim confirms the table (stakeholder round 1) and `docs/stakeholder_notes.md` records it. **Then freeze it.** If he changes it later, redo step 4 and re-run every baseline.
 
-### Step 5. Baselines
-- **Run:** `run_vlm.py` (zero-shot, few-shot) on **val**; `yolo_rules_baseline.py`
-- **First time on the GPU:** add `--limit 20` and check the answers by eye.
-- **Done when:** val scores in `results/summary.csv`; few-shot setting chosen.
+#### Step 3. Split the photos
+- **You do:** `python scripts/split_data.py --check-leakage`
+- **Why:** puts whole videos into train (70%), val (15%) or test (15%). Frames of one video look almost the same, so they must stay in one pile, or the test score will be too high.
+- **Makes:** `data/processed/splits.json` and `data/processed/leakage_report.json` (test photos that look almost the same as a training photo).
+- **Waits for:** step 1; D6 for Roboflow photos.
+- **Done when:** you have looked at the leakage report and each dataset reaches all three piles.
 
-### Step 6. Train LoRA
-- **Run:** `python scripts/export_llamafactory.py`, then `llamafactory-cli train configs/llamafactory/lora_single.yaml` and `.../lora_contrastive.yaml`
-- **Pick the checkpoint** by val `flag_f1` (run `run_vlm.py --adapter ...` on val), not by training loss.
-- **Done when:** both adapters saved; peak GPU memory and training time logged.
+#### Step 4. Make the question files
+- **You do:** `python scripts/build_questions.py`
+- **Why:** the model cannot learn from boxes; it needs question + answer pairs (Section1b).
+- **Makes** (in `data/processed/questions/`):
 
-### Step 7. Evaluate
-- **Run:** each final method once on `test.jsonl` and `test_reworded.jsonl`, then `evaluate.py` for each.
-- **Done when:** results table filled; ~50 mistakes sorted by type (missed flag, wrong behaviour, wrong rule, bad box).
+  | File | Contents | Used by |
+  |---|---|---|
+  | `train_single.jsonl` | each training photo once, with one random setting | step 6, run A |
+  | `train_contrastive.jsonl` | each training photo with every training setting | step 6, run B (optional) |
+  | `val.jsonl` | val photos × training settings | steps 5–6: choose prompts and checkpoints |
+  | `test.jsonl` | test photos × every setting | step 7, once per method; includes the text-switch pairs |
+  | `test_reworded.jsonl` | test questions with reworded setting text | optional reworded-setting test |
 
-### Step 8. Display
-- **Run:** `python scripts/visualize.py --questions ... --predictions ... --n 10`
-- **Output:** annotated photos with a one-line summary ("may need a check", never "cheating")
-- **Done when:** shown in stakeholder round 2; feedback recorded and applied.
+- **Waits for:** steps 2 and 3.
+- **Done when:** the script prints the counts; the share of "someone flagged" answers per setting is in `docs/experiment_log.md`; and 5 random questions are checked by eye (does the answer key match the photo?).
+
+### Baselines (step 5)
+
+#### Step 5. Score the methods that need no training
+- **You do:** `run_vlm.py` on `val.jsonl` (zero-shot, then `--few-shot 2`), `yolo_rules_baseline.py`, then `evaluate.py` for each.
+- **Why:** these are the scores that training must beat (RQ1), and the "before" for RQ2.
+- **First time on the GPU:** add `--limit 20` and read the answers. They must be valid JSON.
+- **Waits for:** step 4, GPU env, D4 (YOLO model).
+- **Done when:** the val scores are in `results/summary.csv` and the few-shot choice is in the experiment log.
+
+### Train (step 6)
+
+#### Step 6. Train LoRA
+- **You do:** `python scripts/export_llamafactory.py`, then `llamafactory-cli train configs/llamafactory/lora_single.yaml` (run A).
+- **Why:** to teach the model the classroom and exam cues (RQ1).
+- **Makes:** adapter checkpoints in `outputs/lora_single/` (not in git).
+- **Choose the checkpoint** by val `flag_f1` (`run_vlm.py --adapter ...` on val), not by training loss.
+- **Then:** the run B decision (Section6), on val.
+- **Done when:** the chosen checkpoint, peak GPU memory and training time are in the experiment log.
+
+### Compare (step 7)
+
+#### Step 7. Final test
+- **Before you start:** `evaluate.py` cannot yet report two numbers that Section3 needs (Section8, "to add"). Add them first.
+- **You do:** run each final method **once** on `test.jsonl`, then `evaluate.py`.
+- **Makes:** `results/metrics/*.json` and new rows in `results/summary.csv`.
+- **Done when:** the results table (Section8) is filled and ~50 mistakes are sorted by type (missed student, wrong behaviour, ignored the text, wrong box).
+
+### Report (step 8)
+
+#### Step 8. Make the pictures and get feedback
+- **You do:** `python scripts/visualize.py --questions ... --predictions ... --n 10`
+- **Makes:** annotated photos with a one-line summary ("may need a check", never "cheating") in `results/figures/`.
+- **Used by:** stakeholder round 2, the slides, the proposal.
+- **Done when:** Dr Lim's round-2 feedback is in `docs/stakeholder_notes.md`, with what we changed.
 
 ---
 
 ## 8. Evaluation
 
-### Metrics (all from `scripts/evaluate.py`)
+### Metrics (`scripts/evaluate.py`)
 
-| Metric | What it measures | Used for |
-|---|---|---|
-| `flag_f1` (main) | Per question: did it name the right behaviours to flag? F1 over (question, behaviour) pairs | all RQs |
-| `known_f1` / `unseen_f1` | `flag_f1` on trained rules / on the held-out rule only | RQ1 / RQ2 |
-| `flip_acc` | Same image, all 3 rules: share of images where every answer is right | RQ2 (does it read the rule?) |
-| `f1_wording_para1/2` | `flag_f1` on reworded rules | RQ2 (meaning, not exact words) |
-| `box_recall` (secondary) | Flagged students found at IoU ≥ 0.5 | localisation, reported but not headline |
-| `valid_json` | Share of answers that parse | invalid answers count as "no one flagged" |
+| Metric | What it measures | Used for | Status |
+|---|---|---|---|
+| `flag_f1` (main) | Per question: did it name the right behaviours to flag? F1 over (question, behaviour) pairs | all RQs | ✅ |
+| `ctx_<setting>_f1` | `flag_f1` for one setting (in `results/metrics/*.json`, not in `summary.csv`) | RQ1 | ✅ |
+| `flip_acc` | Same photo, all settings: share of photos where every answer is right | RQ2 | ✅ |
+| `box_recall` (secondary) | Flagged students found at IoU ≥ 0.5 | localisation, reported but not headline | ✅ |
+| `valid_json` | Share of answers that parse | invalid answers count as "no one flagged" | ✅ |
+| **Precision per setting and per dataset** | Share of flags that are correct, e.g. on Roboflow photos with exam text | RQ3 (false flags) | ❌ to add |
+| **Switch rate** | On photos whose correct answer changes between settings: share where the model's answer also changes | RQ2 (clearer than `flip_acc`, which also drops when a box is missed) | ❌ to add |
+| `unseen_f1`, `wording_para<n>_f1` | Held-out setting; reworded setting text | optional tests | ✅ |
 
-**Why F1, not accuracy.** Most behaviour checks are "not flagged". A model that never flags anything would get high accuracy and zero F1.
+**Why F1, not accuracy.** Most checks are "not flagged". A model that never flags anyone would get high accuracy and zero F1.
 
 ### Protocol
-
-1. Choose prompts, checkpoints and settings on **val** only.
-2. Run the **test** set once per final method. Do not tune after looking at test scores.
+1. Choose prompts, checkpoints and the run B decision on **val** only.
+2. Run the **test** file once per final method. Do not tune after you see test scores.
 3. One scorer (`evaluate.py`) for every method.
-4. Every reported number comes from `results/summary.csv`, with `--note` saying the checkpoint or seed.
+4. Every reported number comes from `evaluate.py` output (`results/summary.csv` or `results/metrics/*.json`), with `--note` saying the checkpoint or seed.
 
-### Results table (fill from `results/summary.csv`)
+### Results table (fill from `evaluate.py` output)
 
-| Method | flag_f1 (SCB) | flip_acc | unseen_f1 | reworded F1 | flag_f1 (2nd test set) |
-|---|---|---|---|---|---|
-| YOLO + rule table | | | | | |
-| Qwen zero-shot | | | | | |
-| Qwen few-shot | | | | | |
-| Qwen + LoRA, normal | | | | | |
-| Qwen + LoRA, rule-contrastive | | | | | |
+| Method | F1, lesson setting | F1, exam setting | Text-switch (`flip_acc` / switch rate) | Precision, exam photos |
+|---|---|---|---|---|
+| YOLO + flag table | | | n/a (no text) | |
+| Qwen zero-shot | | | | |
+| Qwen few-shot | | | | |
+| Qwen + LoRA (run A) | | | | |
+| *Qwen + LoRA (run B, if trained)* | | | | |
 
 ---
 
 ## 9. Lecture topics applied
 
-| Topic | Week | Where in the pipeline | What it tests |
+| Topic | Week | Where | What it tests |
 |---|---|---|---|
-| Instruction tuning | 4 | step 3: image + rule + question → JSON | teaches the task and an exact output format |
-| LoRA | 4 | step 6 | does cheap fine-tuning help, and does it keep rule reading? |
+| Instruction tuning | 4 | step 4: photo + setting + question → JSON | teaches the task and an exact output format |
+| LoRA | 4 | step 6 | does cheap fine-tuning help (RQ1), and does it keep text use (RQ2)? |
 | QLoRA (optional) | 4 | step 6 | memory saved vs accuracy lost |
 | Prompting: few-shot | 6 | step 5 | how far prompts go without training |
-| Fusion: late vs joint | 5, 7 | step 5 vs 6 | detector + rules vs VLM reading rule text |
-| Trust and evaluation | 8 | step 7: reworded rules, val/test discipline, F1 | does it follow meaning? are scores fair? |
+| Fusion: late vs joint | 5, 7 | YOLO + table vs Qwen | detector + code vs a VLM that reads the setting text |
+| Trust and evaluation | 8 | step 7: false-flag rate, val/test rules, F1 | is it safe for exams (RQ3)? are scores fair? |
 
 ---
 
-## 10. Timeline and to-do
+## 10. Timeline and dependencies
 
-Put owner initials in the brackets. Tick boxes in a pull request. **Submission deadline: [fill in]** · **Presentation: [fill in]**
+Put owner initials in the brackets. Tick the boxes when done and commit. **Submission deadline: [fill in]** · **Presentation: [fill in]**
 
-### Week 1 (16–22 Oct): data and baselines
+**Order in one line:** Task 2a → Saturday decisions (D1–D3, D6) → config + Sunday email → steps 1–4 → baselines (step 5) → LoRA (step 6) → final test (step 7) → report (step 8). GPU set-up, YOLO training (after D4) and `evaluate.py` additions can run alongside.
 
-**Milestone:** frozen question files and zero-shot val scores.
+### Sat 17 Oct
 
-- [x] Confirm no other group has the topic
-- [x] Download SCB (HF), run `inspect_scb.py`, check labels by eye
-- [x] Set `split.group_regex` from SCB file names
-- [ ] Confirm topic and two-application framing with instructor [ ]
-- [ ] Assign an owner to every line [ ]
-- [ ] **Task 2a:** check Roboflow exam_cheating [ ]
-- [ ] Team meeting: decisions D1–D3 (§0); log in `decisions.md` [ ]
-- [ ] Update rule table in the stakeholder email; **send by Sun 18 Oct** [ ]
-- [ ] Stakeholder round 1 reply; freeze `rules.csv`; notes [ ]
-- [ ] **Task 3:** `filter_scb.py` → `split_data.py --check-leakage` → `build_questions.py` [ ]
-- [ ] **Task 4:** GPU env (`requirements-gpu.txt`); `run_vlm.py --limit 20`; zero-shot on val [ ]
-- [ ] YOLO baseline: decide D4; prepare weights [ ]
-- [ ] Second test set: DIPSER access, or pick a backup [ ]
-- [ ] Cited figures for proposal Section 1 (class sizes; invigilator-to-student ratios) [ ]
+- [ ] **Task 2a: check Roboflow exam_cheating** [ ]. *Needs: nothing.*
+  Download it in YOLOv8 format, from a version **without augmentation** if there is one (`data/README.md`), then run step 0 on it. Record: box counts, "right out of 20" for Use_phone, Look_around and Cheat_paper, whether photos are wide exam halls or close-ups, and whether the export holds edited copies of the same photo (D6).
+  *Done when:* the results are posted to the group.
+- [ ] **Team meeting** [everyone]. *Needs: Task 2a results.*
+  Confirm approach A (#22). Decide D1, D2, D3 (draft) and D6. Ideally D4 and D5 too. Check the D3 draft against the RQ2 constraint (Section1b).
+  *Done when:* each decision is a row in `docs/decisions.md`.
+- [ ] **GPU environment** [ ]. *Needs: nothing; can start now.*
+  `pip install -r requirements-gpu.txt` in the `classroom` env on the A40.
+  *Done when:* Qwen2.5-VL-3B loads on the GPU.
 
-### Week 2 (23–29 Oct): training and tests
+### Sun 18 Oct
+
+- [ ] **Update the config** []. *Needs: the meeting.* Step 1 (class map) and step 2 (`rules.csv`, `contexts`).
+- [ ] **Stakeholder email** [ ]. *Needs: the D3 draft.* Put the new flag table in the email; send it to Dr Lim.
+  *Done when:* sent; the date is in `docs/stakeholder_notes.md`.
+- [ ] **Steps 1–4** []. *Needs: the config update; D6 for Roboflow.*
+- [ ] **20-question GPU test** [ ]. *Needs: GPU env and `val.jsonl`.* `run_vlm.py --limit 20`; read the answers.
+
+### Mon 19 – Thu 22 Oct
+
+- [ ] Zero-shot and few-shot on val; score them (step 5) [ ].
+- [ ] YOLO: train one model on our training photos (if D4 agrees); YOLO + table on val [ ].
+- [ ] Add precision per setting/dataset and switch rate to `evaluate.py`, with a test (Section8) [ ].
+- [ ] Dr Lim's reply → freeze the flag table. If it changes: redo step 4 and re-run the baselines [ ].
+- [ ] Cited figures for the problem statement (lecture size; invigilator-to-candidate ratio) [ ].
+
+### Week 2 (23–29 Oct): training and final test
 
 **Milestone:** every method scored on test; stakeholder round 2 done.
-
-- [ ] Few-shot on val [ ]
-- [ ] YOLO + rule table on test [ ]
-- [ ] Export data; LoRA run A (normal) [ ]
-- [ ] LoRA run B (rule-contrastive) [ ]
-- [ ] Pick checkpoints on val; run all methods on `test` and `test_reworded` [ ]
-- [ ] Hand-label 100–200 frames of the second test set; write its manifest [ ]
-- [ ] `visualize.py` examples; stakeholder round 2; notes [ ]
+- [ ] LoRA run A; choose the checkpoint on val (step 6) [ ].
+- [ ] Text-switch check on val → run B decision (Section6); train run B only if needed [ ].
+- [ ] Final test for every method (step 7) [ ].
+- [ ] `visualize.py` examples; stakeholder round 2 (step 8) [ ].
 
 ### Week 3 (30 Oct – 5 Nov): results and write-up
 
 **Milestone:** proposal submitted; viva rehearsed.
-
-- [ ] Best model on the second test set; final results table [ ]
-- [ ] Error analysis (~50 mistakes by type) [ ]
-- [ ] Apply round 2 feedback; proposal Section 8 [ ]
-- [ ] Optional extras only if week 2 ended early (§2) [ ]
-- [ ] Final proposal (≤ 2,000 words); verify every reference [ ]
-- [ ] Slides; viva rehearsal: every member answers questions [ ]
-- [ ] Peer evaluation on NTULearn (compulsory, 5% penalty) [everyone]
+- [ ] Results table and error analysis (~50 mistakes by type) [ ].
+- [ ] Apply round-2 feedback; proposal Section 8 [ ].
+- [ ] Optional extras, only if week 2 ended early (Section2) [ ].
+- [ ] Final proposal (≤ 2,000 words); verify every reference [ ].
+- [ ] Slides; viva rehearsal: every member answers questions [ ].
+- [ ] Peer evaluation on NTULearn (compulsory, 5% penalty) [everyone].
 
 ---
 
@@ -398,25 +451,25 @@ Put owner initials in the brackets. Tick boxes in a pull request. **Submission d
 2. Run the method (`run_vlm.py` / `yolo_rules_baseline.py`) → `results/predictions/<method>_<split>.jsonl`.
 3. `python scripts/evaluate.py --method <method> --questions <file> --predictions <file> --note "<checkpoint, seed>"`
 4. Add an entry to `docs/experiment_log.md`: command, commit, result, **what you observed**.
-5. Commit `results/summary.csv`, `results/metrics/`, and the log.
+5. Commit `results/summary.csv`, `results/metrics/` and the log.
 
-**Change the rule table** (only before it is frozen, or after a stakeholder request)
+**Change the flag table** (only before it is frozen, or after a stakeholder request)
 1. Edit `configs/rules.csv`.
 2. Re-run `build_questions.py`. Earlier results are no longer comparable: re-score them.
 3. Log it in `docs/decisions.md` with the reason.
 
 **Add or change a behaviour**
-1. Add a row to `rules.csv`; map the SCB class in `scb_class_map`.
-2. Re-run steps 1, 3–4. Log the decision.
+1. Add a row to `rules.csv`; map the dataset class in `scb_class_map`.
+2. Re-run steps 1, 3 and 4. Log the decision.
 
-**Add a new lesson type** (e.g. for the stakeholder)
-1. Add a column to `rules.csv` and an entry under `contexts` in `default.yaml` (canonical + 2 paraphrases).
+**Add a setting**
+1. Add a column to `rules.csv` and an entry under `contexts` in `default.yaml` (one sentence + 2 reworded versions).
 2. To test it as unseen, add it to `heldout_contexts`, not `train_contexts`.
 
-**Add another dataset (e.g. Roboflow, or a second test set)**
-1. If it is YOLO format with a `.yaml` listing `names` and `images/` + `labels/` folders: put it under `data/raw/scb/<name>/`, map its class names in `scb_class_map`, and re-run steps 1, 3–4. Nothing else changes.
-2. Otherwise, write a small script that outputs the **same manifest format** as `filter_scb.py` (image, width, height, subset, labelled, boxes).
-3. For a test-only set: put all its images in test in a splits file.
+**Add another dataset**
+1. If it is YOLO format with a `.yaml` listing `names` and `images/` + `labels/` folders: put it under `data/raw/scb/<name>/`, map its class names in `scb_class_map`, and re-run steps 1, 3 and 4.
+2. Check how its file names show the source photo or video (step 3). Edited copies of one photo must stay in one pile.
+3. Otherwise, write a small script that outputs the **same manifest format** as `filter_scb.py` (image, width, height, subset, labelled, boxes).
 
 ---
 
@@ -424,13 +477,13 @@ Put owner initials in the brackets. Tick boxes in a pull request. **Submission d
 
 | Don't | Because |
 |---|---|
-| Tune anything on test scores | the score is then optimistic and indefensible at the viva |
-| Train on held-out-rule questions or paraphrased wordings | they are the unseen-rule and reworded tests |
+| Tune anything on test scores (this includes the run B decision) | the score is then optimistic and indefensible at the viva |
+| Train on held-out-setting questions or reworded setting text | they are the unseen-setting and reworded tests |
 | Change `max_pixels` between training and inference | boxes will be in the wrong pixel space |
-| Compare runs with different `rules.csv` or questions | differences come from data, not the method |
-| Report numbers from a terminal or notebook | only `results/summary.csv` is traceable |
+| Compare runs with different `rules.csv` or question files | differences come from the data, not the method |
+| Report numbers from a terminal or notebook | only `evaluate.py` output is traceable |
 | Commit data, images, weights or tokens | licences and repo size |
-| Write "cheating" or "not paying attention" in outputs | we see behaviour, not intent; the wording was agreed with stakeholders |
+| Write "cheating" or "not paying attention" in outputs | we see behaviour, not intent |
 | Claim "first to…" without checking | examiners probe absolute claims |
 
 ---
@@ -439,15 +492,15 @@ Put owner initials in the brackets. Tick boxes in a pull request. **Submission d
 
 | Risk | Sign | Fallback |
 |---|---|---|
-| No usable phone data (Roboflow quality poor) | Task 2a fails | invigilation uses talking, turning head, reading notes; phone moves to future work |
-| Too few boxes for a behaviour | filter WARNING, or < ~100 boxes | drop or merge it; log the decision |
-| `group_regex` cannot find source videos | split prints "almost one group per image" | rely on `--check-leakage`; group near-twins by hand |
-| VLM answers are not valid JSON | `valid_json` < 0.9 | add one example to the prompt; check `max_new_tokens` |
-| Box recall near 0 for every method | crowded rooms, small students | keep `flag_f1` as the headline; report boxes as a limitation |
-| GPU queue or memory problems | OOM, long waits | batch size 1 + more gradient accumulation; QLoRA; Colab as backup |
-| LoRA run late | week 2 slipping | drop optional items; train run B first (it is our method) |
-| DIPSER unavailable or too slow to label | no access by mid week 2 | backup dataset (§5), or ~100 labelled frames |
-| SCB authors' YOLO weights trained on our test images | leakage check (D4) | retrain YOLOv8 on our train split (a few GPU hours, before LoRA) |
+| Roboflow labels poor, or close-ups only | Task 2a | Look for another exam dataset; else invigilation uses SCB behaviours only and phone moves to future work |
+| Roboflow edited copies leak into test | Task 2a / leakage report | Use a version without augmentation; or keep Roboflow's own train/valid/test split (D6). The second needs a small change in `split_data.py`: it records that split (`orig_split`) but does not use it yet. |
+| RQ2 cannot be tested | No row of the D3 table changes between settings for one dataset | Change the settings (D2), e.g. use group discussion as the lesson setting |
+| Too few boxes for a behaviour | filter WARNING, or < ~100 boxes | Drop or merge it; log the decision |
+| `group_regex` cannot find source videos | split prints "almost one group per image" | Rely on `--check-leakage`; group near-copies by hand |
+| VLM answers are not valid JSON | `valid_json` < 0.9 | Add one example to the prompt; check `max_new_tokens` |
+| Box recall near 0 for every method | crowded rooms, small students | Keep `flag_f1` as the headline; report boxes as a limitation |
+| GPU queue or memory problems | out-of-memory errors, long waits | Batch size 1 + more gradient accumulation; QLoRA; Colab as backup |
+| LoRA run late | week 2 slipping | Drop optional items; run B only if clearly needed |
 
 ---
 
@@ -455,10 +508,11 @@ Put owner initials in the brackets. Tick boxes in a pull request. **Submission d
 
 | File | What it is |
 |---|---|
-| `configs/default.yaml` | every setting: paths, class map, lesson wordings, split, model |
-| `configs/rules.csv` | the rule table |
+| `configs/default.yaml` | every setting: paths, class map, setting sentences, split, model |
+| `configs/rules.csv` | the flag table |
 | `configs/llamafactory/*.yaml` | LoRA runs A and B |
-| `docs/decisions.md` | why we did each thing (for the viva) |
-| `docs/stakeholder_notes.md` | meeting notes and changes made |
+| `data/README.md` | how to download each dataset |
+| `docs/decisions.md` | what we decided and why (for the viva) |
+| `docs/stakeholder_notes.md` | stakeholder contact, questions and changes made |
 | `docs/experiment_log.md` | what was run and what we observed |
-| `results/summary.csv` | the only source of reported numbers |
+| `results/summary.csv`, `results/metrics/` | the only sources of reported numbers (written by `evaluate.py`) |

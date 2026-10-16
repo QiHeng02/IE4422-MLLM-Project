@@ -19,20 +19,25 @@ paths:
 # ignored (not scored) for that lesson type.
 rules_csv: configs/rules.csv
 
-# Map SCB source class names -> our behaviour names.
-# !! DAY-1 CHECK: run scripts/inspect_scb.py and fill this from the REAL class
-# names. The public SCB subsets we could see list classes such as
-# 'discuss', 'TurnHead', 'BowHead', hand-raise/read/write. We could NOT confirm
-# phone or computer classes. Do not train until this map is verified.
+# Map dataset class names (exactly as in each dataset's yaml) -> our behaviour names.
+# Classes available (checked 16 Oct):
+#   SCB (HF): discuss, TurnHead, BowHead, hand-raising, read, write
+#   Roboflow exam_cheating (being checked): Use_phone, Look_around, Cheat_paper, Normal
+# Final list = PROJECT_PLAN.md decision D1. Every behaviour in rules.csv must appear here.
 scb_class_map:
-  discuss: talking          # TODO verify: is 'discuss' a fair proxy for talking?
+  discuss: talking
   TurnHead: turning_head
-  # phone_class_name: using_phone       # TODO: find or drop
-  # computer_class_name: using_computer # TODO: find or drop
+  # BowHead: head_down          # if chosen (D1)
+  # hand-raising: hand_raising  # if chosen (D1)
+  # Use_phone: using_phone      # Roboflow, if Task 2a passes
+  # Look_around: turning_head   # Roboflow, if Task 2a passes
+  # Cheat_paper: reading_notes  # Roboflow, if Task 2a passes
 
 # ---------------------------------------------------------------------------
-# Lesson contexts
+# Settings ("contexts" in the code)
 # ---------------------------------------------------------------------------
+# !! OLD DESIGN below (computer lab, held-out setting). Rewrite after decisions
+# D2 and D3 (PROJECT_PLAN.md section 0), together with rules.csv.
 # canonical: wording used for train, validation and the main test.
 # paraphrases: NEVER used in training; only for the reworded-rule test (RQ2).
 contexts:
