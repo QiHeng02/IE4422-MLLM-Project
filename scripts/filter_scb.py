@@ -61,7 +61,10 @@ def main() -> None:
                 parts = ln.split()
                 if len(parts) < 5:
                     continue
-                cid = int(parts[0])
+                try:
+                    cid = int(parts[0])
+                except ValueError:
+                    continue
                 src = names[cid] if 0 <= cid < len(names) else None
                 if src not in cmap:
                     continue

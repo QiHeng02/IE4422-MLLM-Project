@@ -9,7 +9,22 @@ IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 
 def find_subset_yamls(root: Path) -> list[Path]:
-    return sorted(root.rglob("*.yaml")) + sorted(root.rglob("*.yml"))
+    """Dataset yamls only: files that list class `names`.
+
+    SCB subsets also ship YOLO training configs (exp/opt.yaml, exp/hyp.yaml) and
+    a hidden .cache folder; those are skipped.
+    """
+    found = []
+    for p in sorted(root.rglob("*.yaml")) + sorted(root.rglob("*.yml")):
+        if any(part.startswith(".") for part in p.relative_to(root).parts):
+            continue
+        try:
+            data = yaml.safe_load(p.read_text(encoding="utf-8"))
+        except (yaml.YAMLError, UnicodeDecodeError):
+            continue
+        if isinstance(data, dict) and data.get("names"):
+            found.append(p)
+    return found
 
 
 def class_names(yaml_path: Path) -> list[str]:
@@ -31,4 +46,9 @@ def label_path_for(img: Path) -> Path:
 
 
 def iter_images(folder: Path) -> list[Path]:
-    return sorted(p for p in folder.rglob("*") if p.suffix.lower() in IMG_EXT)
+    """Dataset images only: files inside an `images/` folder.
+
+    Skips YOLO run output that SCB ships next to the data (exp/ plots, train_batch*.jpg).
+    """
+    return sorted(p for p in folder.rglob("*")
+                  if p.suffix.lower() in IMG_EXT and "images" in p.relative_to(folder).parts[:-1])

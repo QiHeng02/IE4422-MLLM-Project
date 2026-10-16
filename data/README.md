@@ -18,8 +18,8 @@ Download one subset (example):
 
 ```bash
 pip install -U huggingface_hub
-huggingface-cli download wintonYF/SCB-Dataset --repo-type dataset \
-  --include "SCB5-Discuss-2024-9-17/*" --local-dir data/raw/scb
+hf download wintonYF/SCB-Dataset --repo-type dataset \
+  --include "SCB5-Discuss-2024-9-17/*" --local-dir data/raw/scb     # `hf` replaces the old huggingface-cli
 cd data/raw/scb/SCB5-Discuss-2024-9-17 && unzip -q *.zip && cd -
 python scripts/inspect_scb.py --root data/raw/scb
 ```

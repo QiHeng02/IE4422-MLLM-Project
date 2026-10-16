@@ -39,8 +39,11 @@ Our rule table uses 4 behaviours: **talking, turning head, using phone, using co
 
 1. On the NTU cluster (campus Wi-Fi; the VPN is slow), download `YOLO.zip` and the two small subsets:
    ```bash
-   huggingface-cli download wintonYF/SCB-Dataset --repo-type dataset --include "YOLO.zip" "SCB5-Discuss-2024-9-17/*" "SCB_BowTurnHead_20250509/*" --local-dir data/raw/scb_download
-   unzip -l data/raw/scb_download/YOLO.zip | grep -iE "yaml|names" | head    # list first, unzip after
+   D=/projects/IE4422/data/scb
+   hf download wintonYF/SCB-Dataset YOLO.zip --repo-type dataset --local-dir $D
+   hf download wintonYF/SCB-Dataset --repo-type dataset --include "SCB5-Discuss-2024-9-17/*" --local-dir $D
+   hf download wintonYF/SCB-Dataset --repo-type dataset --include "SCB_BowTurnHead_20250509/*" --local-dir $D
+   unzip -l $D/YOLO.zip | grep -iE "\.ya?ml$"    # list first, unzip after
    ```
 2. Run `python scripts/inspect_scb.py --root <unzipped folder>` on each.
 3. Team decides, logged in `docs/decisions.md` (entry 12):

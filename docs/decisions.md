@@ -19,3 +19,7 @@ The viva will ask "why did you do X?"; the answer should be here.
 | 10 | 16 Oct | LoRA run A uses 2× the epochs of run B | Run B has 2× the examples; matched steps and image exposure leave only the rule pairing different | Same epochs (confounded) | proposed |
 | 11 | 16 Oct | Main metric is per-question behaviour F1; box recall is secondary | A 3B model is weak at finding small students in crowded rooms; box-only F1 could be ~0 for every method | Box F1 as main metric | proposed |
 | 12 | | Behaviour set after SCB class check (see PROJECT_PLAN day-1 blocker) | | A / B / C | **open** |
+| 13 | 16 Oct | Option A ruled out: public SCB has no phone / computer / talk labels | Checked HF subsets and YOLO.zip (training code + teacher-behaviour runs only) | — | agreed |
+| 14 | 16 Oct | Available student classes: discuss (5,392 boxes), TurnHead (11,156), BowHead (4,962), hand-raising (13,453), read (24,078), write (9,841) | `inspect_scb.py` on 3 downloaded subsets | — | fact |
+| 15 | 16 Oct | Split groups by source video across subsets; `group_regex` = digits before "_", else first 4 digits | Same video IDs appear in several subsets; the 4-digit rule is a guess, verified with `--check-leakage` | group per subset | proposed |
+| 16 | | YOLO baseline: use the authors' per-subset weights (`exp/weights/best.pt`) or retrain on our split? | Authors' weights may have trained on images in our test set | retrain YOLOv8 on our train split | **open** |

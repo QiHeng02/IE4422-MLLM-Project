@@ -6,7 +6,8 @@ Frames from the same video look almost identical. If one is in train and its
 neighbour is in test, the test score is too high. So whole groups (one source
 video or classroom) go into one split.
 
-Group key: `split.group_regex` (named group 'src') applied to the file name.
+Group key: `split.group_regex` (named group 'src') applied to the file name, shared
+across subsets (one video = one group, whichever subsets its frames are in).
 If not set, the file stem with trailing digits/separators removed is used.
 
 --check-leakage computes a 64-bit difference hash (dHash) for every image and
@@ -41,15 +42,13 @@ def group_key(image: str, regex: re.Pattern | None) -> str:
 
 
 def assign_groups(groups: dict[str, list[str]], ratios: dict[str, float], seed: int) -> dict[str, str]:
-    """Split whole groups, separately inside each SCB subset.
-
-    Stratifying by subset matters: each subset labels different behaviours, so a
-    plain random split could leave a behaviour out of the test set entirely.
-    Within a subset: shuffle groups, then fill train, val, test up to each quota.
+    """Split whole groups. Keys of the form "<stratum>/<group>" are split per stratum;
+    plain keys form one stratum. Within a stratum: shuffle groups, then fill train,
+    val, test up to each image quota (at least one group each when there are >= 3).
     """
     by_subset: dict[str, list[str]] = defaultdict(list)
     for k in groups:
-        by_subset[k.split("/", 1)[0]].append(k)
+        by_subset[k.split("/", 1)[0] if "/" in k else "all"].append(k)
     rng = random.Random(seed)
     split_of: dict[str, str] = {}
     order = ["train", "val", "test"]
@@ -114,11 +113,18 @@ def main() -> None:
     regex = re.compile(sc["group_regex"]) if sc.get("group_regex") else None
     rows = list(read_jsonl(repo_path(cfg["paths"]["manifest"])))
 
+    # Group by source video ACROSS subsets: the same SCB video (e.g. 0090_...) appears in
+    # several subsets, and must not land in train for one subset and test for another.
     groups: dict[str, list[str]] = defaultdict(list)
     for r in rows:
-        groups[f"{r['subset']}/{group_key(r['image'], regex)}"].append(r["image"])
+        groups[group_key(r["image"], regex)].append(r["image"])
 
     split_of = assign_groups(groups, sc["ratios"], cfg["seed"])
+    subset_of = {r["image"]: r["subset"] for r in rows}
+    for sub in sorted(set(subset_of.values())):
+        got = {s for img, s in split_of.items() if subset_of[img] == sub}
+        if got != {"train", "val", "test"}:
+            print(f"WARNING: subset {sub} only reaches {sorted(got)}; change seed or check group_regex")
     counts = {s: sum(1 for v in split_of.values() if v == s) for s in ("train", "val", "test")}
     out = repo_path(cfg["paths"]["splits"])
     out.parent.mkdir(parents=True, exist_ok=True)

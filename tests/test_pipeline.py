@@ -22,6 +22,14 @@ def make_subset(root: Path, name: str, classes: list[str], n_videos: int, frames
     rng = random.Random(seed)
     (root / name).mkdir(parents=True)
     (root / name / f"{name}.yaml").write_text(yaml.safe_dump({"names": classes}))
+    # clutter that real SCB subsets ship: YOLO run output next to the data
+    exp = root / name / "exp"
+    exp.mkdir()
+    (exp / "opt.yaml").write_text(yaml.safe_dump({"weights": "x", "data": "y"}))
+    (exp / "hyp.yaml").write_text(yaml.safe_dump({"lr0": 0.01}))
+    Image.new("RGB", (64, 64)).save(exp / "results.png")
+    (exp / "results.txt").write_text("0/49  1.2  0.5  0.3\n1/49  1.1  0.4  0.3\n")
+    Image.new("RGB", (64, 64)).save(exp / "train_batch0.jpg")
     for v in range(n_videos):
         for f in range(frames):
             stem = f"{name}_video{v:02d}_{f:04d}"
@@ -57,6 +65,7 @@ def test_end_to_end(tmp_path):
 
     out = run("scripts/inspect_scb.py", "--root", raw, "--out", tmp_path / "check")
     assert "discuss" in out and "TurnHead" in out
+    assert "## exp" not in out and "malformed lines: 0" in out  # YOLO run clutter ignored
 
     run("scripts/filter_scb.py", "--config", cfg_path)
     rows = [json.loads(l) for l in open(cfg["paths"]["manifest"])]
@@ -66,10 +75,10 @@ def test_end_to_end(tmp_path):
 
     out = run("scripts/split_data.py", "--config", cfg_path, "--check-leakage")
     split = json.loads(Path(cfg["paths"]["splits"]).read_text())["split"]
-    # no source video in two splits
+    # no source video in two splits, even across subsets (same video names in both)
     seen = {}
     for img, s in split.items():
-        key = (Path(img).parts[-4], Path(img).stem.split("_")[-2])
+        key = Path(img).stem.split("_")[-2]
         assert seen.setdefault(key, s) == s
 
     run("scripts/build_questions.py", "--config", cfg_path)

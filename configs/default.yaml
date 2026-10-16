@@ -66,10 +66,12 @@ question: >-
 # ---------------------------------------------------------------------------
 split:
   ratios: {train: 0.70, val: 0.15, test: 0.15}
-  # Regex with a named group 'src' that extracts the source video / classroom
-  # from a file name. DAY-1: look at ~20 SCB file names and set this.
-  # If null, falls back to the file stem with trailing digits/separators removed.
-  group_regex: null
+  # Regex with a named group 'src' = source video, from the file name.
+  # SCB names seen (16 Oct): 0081_001790.jpg -> video 0081 (before "_");
+  # 0001052.jpg / 06000022.jpg (no "_") -> first 4 digits assumed = video. The second
+  # case is a GUESS: check split_data.py --check-leakage output by eye.
+  group_regex: '^(?P<src>\d+(?=_)|\d{4})'
+
   leakage_hamming_threshold: 5      # dHash distance counted as a near-duplicate
 
 # ---------------------------------------------------------------------------
