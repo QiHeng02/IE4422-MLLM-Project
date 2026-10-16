@@ -1,0 +1,30 @@
+# Data, weights and large outputs never go in git (licences + size)
+data/raw/
+data/processed/
+outputs/
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+*.zip
+
+# Generated results: keep summary + metrics, ignore bulk predictions and figures
+results/predictions/
+results/figures/
+results/data_check/*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Secrets and editors
+.env
+*.token
+.DS_Store
+.vscode/
+.idea/

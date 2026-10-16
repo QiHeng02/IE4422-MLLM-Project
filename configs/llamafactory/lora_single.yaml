@@ -1,0 +1,56 @@
+# Run A: normal LoRA. Each training image appears with ONE random training rule.
+#   llamafactory-cli train configs/llamafactory/lora_single.yaml
+# Run B (rule-contrastive) = configs/llamafactory/lora_contrastive.yaml; only `dataset`,
+# `output_dir` and `num_train_epochs` differ. Epochs are set so both runs take about the
+# same number of steps and see each image equally often; any score difference then
+# comes from how the rules are paired with images.
+#
+# Verify key names against the LLaMA-Factory version you install; they change between releases.
+
+### model
+model_name_or_path: Qwen/Qwen2.5-VL-3B-Instruct
+image_max_pixels: 1003520          # MUST equal build.max_pixels in configs/default.yaml
+image_min_pixels: 3136
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 8
+lora_alpha: 16
+lora_dropout: 0.05
+lora_target: all                   # language-model linear layers
+freeze_vision_tower: true
+freeze_multi_modal_projector: true
+
+### dataset
+dataset_dir: data/processed/llamafactory
+dataset: classroom_train_single
+eval_dataset: classroom_val
+template: qwen2_vl
+cutoff_len: 4096
+preprocessing_num_workers: 8
+
+### output
+output_dir: outputs/lora_single
+logging_steps: 10
+save_steps: 200
+plot_loss: true
+overwrite_output_dir: true
+report_to: none
+
+### train
+per_device_train_batch_size: 2
+gradient_accumulation_steps: 8
+learning_rate: 1.0e-4
+num_train_epochs: 4                # 2x epochs: single has half the examples, so both runs take ~the same number of steps
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+bf16: true
+seed: 42
+
+### eval (loss only; pick the checkpoint by val flag F1 with run_vlm.py + evaluate.py)
+per_device_eval_batch_size: 2
+eval_strategy: steps
+eval_steps: 200

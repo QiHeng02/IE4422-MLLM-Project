@@ -1,0 +1,5 @@
+behaviour,exam,group_discussion,computer_lab
+talking,flag,ok,flag
+turning_head,flag,ok,unused
+using_phone,flag,flag,flag
+using_computer,flag,ok,ok

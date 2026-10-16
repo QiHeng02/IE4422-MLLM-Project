@@ -1,0 +1,97 @@
+# Single source of truth for every script. Change values here, not in code.
+# Every result in results/ must record which config + seed produced it.
+
+seed: 42
+
+paths:
+  scb_root: data/raw/scb            # unzipped SCB subset(s); not committed
+  dipser_root: data/raw/dipser      # second test set; not committed
+  manifest: data/processed/manifest.jsonl
+  splits: data/processed/splits.json
+  questions_dir: data/processed/questions
+  results_dir: results
+
+# ---------------------------------------------------------------------------
+# Behaviours and lesson rules
+# ---------------------------------------------------------------------------
+# rules.csv holds the rule table: one row per behaviour, one column per lesson
+# type. Each cell is flag | ok | unused.  "unused" = ambiguous; the behaviour is
+# ignored (not scored) for that lesson type.
+rules_csv: configs/rules.csv
+
+# Map SCB source class names -> our behaviour names.
+# !! DAY-1 CHECK: run scripts/inspect_scb.py and fill this from the REAL class
+# names. The public SCB subsets we could see list classes such as
+# 'discuss', 'TurnHead', 'BowHead', hand-raise/read/write. We could NOT confirm
+# phone or computer classes. Do not train until this map is verified.
+scb_class_map:
+  discuss: talking          # TODO verify: is 'discuss' a fair proxy for talking?
+  TurnHead: turning_head
+  # phone_class_name: using_phone       # TODO: find or drop
+  # computer_class_name: using_computer # TODO: find or drop
+
+# ---------------------------------------------------------------------------
+# Lesson contexts
+# ---------------------------------------------------------------------------
+# canonical: wording used for train, validation and the main test.
+# paraphrases: NEVER used in training; only for the reworded-rule test (RQ2).
+contexts:
+  exam:
+    canonical: "The class is sitting a closed-book exam."
+    paraphrases:
+      - "Students are under test conditions with no materials allowed."
+      - "This is a formal examination."
+  group_discussion:
+    canonical: "The class is doing a group discussion."
+    paraphrases:
+      - "Students are working together and talking in small groups."
+      - "This is a collaborative group activity."
+  computer_lab:
+    canonical: "The class is doing a computer lab exercise."
+    paraphrases:
+      - "Students are working on laptops on a programming task."
+      - "This is a hands-on computer practical."
+
+train_contexts: [exam, group_discussion]   # computer_lab is held out (unseen-rule test)
+heldout_contexts: [computer_lab]
+
+question: >-
+  {context} Which students should be flagged for review because their
+  behaviour does not fit this lesson? Answer only with JSON in this format:
+  {{"flagged": [{{"bbox_2d": [x1, y1, x2, y2], "behaviour": "<one of: {behaviours}>"}}],
+  "reason": "<one sentence>"}}. Use {{"flagged": [], "reason": "..."}} if no one.
+
+# ---------------------------------------------------------------------------
+# Split
+# ---------------------------------------------------------------------------
+split:
+  ratios: {train: 0.70, val: 0.15, test: 0.15}
+  # Regex with a named group 'src' that extracts the source video / classroom
+  # from a file name. DAY-1: look at ~20 SCB file names and set this.
+  # If null, falls back to the file stem with trailing digits/separators removed.
+  group_regex: null
+  leakage_hamming_threshold: 5      # dHash distance counted as a near-duplicate
+
+# ---------------------------------------------------------------------------
+# Training data
+# ---------------------------------------------------------------------------
+build:
+  # No answer balancing by default: balancing would break the "same image under
+  # every rule" pairing that rule-contrastive training and the flip test need.
+  # build_questions.py prints the positive rate per context; revisit after day 1.
+  # Images are resized the way Qwen2.5-VL resizes them, and answer boxes are
+  # written in THAT pixel space. Keep max_pixels identical in training and
+  # inference, or boxes will be wrong.
+  min_pixels: 3136                  # 56*56
+  max_pixels: 1003520               # 1280*28*28
+
+# ---------------------------------------------------------------------------
+# Model
+# ---------------------------------------------------------------------------
+model:
+  name: Qwen/Qwen2.5-VL-3B-Instruct
+  max_new_tokens: 512
+  temperature: 0.0                  # greedy, so results are repeatable
+
+eval:
+  iou_threshold: 0.5
