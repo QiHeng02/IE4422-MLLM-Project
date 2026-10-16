@@ -22,24 +22,31 @@ The team's reference for this project. Read sections 1–3 once to understand th
 
 ## 0. Open blocker: check the behaviour classes first
 
-Our rule table uses 4 behaviours: **talking, turning head, using phone, using computer**. The public SCB release ([Hugging Face](https://huggingface.co/datasets/wintonYF/SCB-Dataset)) shows these subsets:
+Our rule table uses 4 behaviours: **talking, turning head, using phone, using computer**.
 
-| Subset | Classes (from its yaml) |
-|---|---|
-| SCB5-Discuss | `discuss` |
-| SCB_BowTurnHead | `BowHead`, `TurnHead` |
-| SCB5-Handrise-Read-write | hand-raise, read, write (check yaml) |
-| SCB5_Teacher_Behavior | teacher classes (not useful) |
-| YOLO.zip (5.3 GB) | unknown; may hold the full 19-class set |
+**What we know (checked 16 Oct).** The SCB paper (arXiv:2304.02488, latest version) lists 20 classes, including `talk`, `turn head`, `using the phone` and `using the computer`. But the public subsets on [Hugging Face](https://huggingface.co/datasets/wintonYF/SCB-Dataset) only show:
 
-**We found no phone or computer classes.** Before other data work:
+| Public subset | Classes (verified from its yaml) | Useful for us |
+|---|---|---|
+| SCB5-Discuss | `discuss` | talking (proxy) |
+| SCB_BowTurnHead | `BowHead`, `TurnHead` | turning head ⚠️ the paper says training on these was "unsatisfactory": expect noisy labels |
+| SCB5-Handrise-Read-write | `hand-raising`, `read`, `write` | no |
+| SCB5_Teacher_Behavior | teacher classes | no |
+| SCB_LLM_202506 | activity-level zips (VLM data), no class list | unclear |
+| **YOLO.zip (5.3 GB)** | **not listed; most likely place for `talk`, `using the phone`, `using the computer`** | check first |
 
-1. Download Discuss and BowTurnHead; run `scripts/inspect_scb.py` (see [§7 step 0](#step-0-check-the-data)).
-2. Look inside `YOLO.zip` for phone or computer classes.
-3. Team decides, and logs it in `docs/decisions.md` (entry 12):
-   - **A.** Keep the 4 behaviours if the classes exist.
-   - **B.** Use the behaviours SCB labels (e.g. discuss, turn head, bow head, hand-raise). The rule table and proposal change.
-   - **C.** Add phone and computer from another source (e.g. COCO-pretrained detector). SCB has no ground truth for them.
+**Steps (owner: data workstream):**
+
+1. On the NTU cluster (campus Wi-Fi; the VPN is slow), download `YOLO.zip` and the two small subsets:
+   ```bash
+   huggingface-cli download wintonYF/SCB-Dataset --repo-type dataset --include "YOLO.zip" "SCB5-Discuss-2024-9-17/*" "SCB_BowTurnHead_20250509/*" --local-dir data/raw/scb_download
+   unzip -l data/raw/scb_download/YOLO.zip | grep -iE "yaml|names" | head    # list first, unzip after
+   ```
+2. Run `python scripts/inspect_scb.py --root <unzipped folder>` on each.
+3. Team decides, logged in `docs/decisions.md` (entry 12):
+   - **A.** YOLO.zip has phone, computer and talk with enough boxes → keep the 4 behaviours.
+   - **B.** It does not → use what SCB labels: `discuss`, `TurnHead`, `BowHead`, `hand-raising`. Rule table and proposal change (e.g. head down: OK in exam, flag in lecture).
+   - **C.** Mix: SCB for discuss / turn head + another dataset for phone / computer. Candidates: [SAV](https://github.com/Ritatanz/SAV) (15 classes incl. "talking with others", "looking around"; no phone or computer; check licence), or a COCO-pretrained detector for phone and laptop (boxes only, no human labels).
 
 The code does not care which: only `configs/rules.csv` and `scb_class_map` change. Delete this section once decided.
 
