@@ -8,18 +8,23 @@ The viva will ask "why did you do X?"; the answer should be here.
 | # | Date | Decision | Why | Alternatives considered | Status |
 |---|---|---|---|---|---|
 | 1 | 15 Oct | Topic: context-aware classroom behaviour analysis (replaces PPE topic) | Another group had the PPE problem statement | Crowd occupancy, workplace safety, misinformation | agreed |
-| 2 | 15 Oct | Main user: lecturers and TAs; exam is one lesson type | Fits SCB (lesson photos); rubric marks broad audiences down | Invigilation-first | proposed |
+| 2 | 15 Oct | Main user: lecturers and TAs; exam is one lesson type | Fits SCB (lesson photos); rubric marks broad audiences down | Invigilation-first | changed → #17 |
 | 3 | 15 Oct | Model: Qwen2.5-VL-3B-Instruct + LoRA | Runs on one A40; pipeline already verified in the PPE work | 7B (if time allows) | agreed |
 | 4 | 15 Oct | Scope cut: no CLIP, no self-consistency, no rank sweep, no own NTU photos; QLoRA and face blur optional | 3-week timeline; one GPU runs training jobs one after another | Full original ladder | agreed |
-| 5 | 16 Oct | Computer lab is the held-out lesson type (never in train or val) | Tests if the model follows a rule it never trained on (RQ2) | Hold out exam or discussion | proposed |
+| 5 | 16 Oct | Computer lab is the held-out lesson type (never in train or val) | Tests if the model follows a rule it never trained on (RQ2) | Hold out exam or discussion | changed → open (PROJECT_PLAN D2): no computer class in the data |
 | 6 | 16 Oct | Split by source video, stratified by SCB subset | Near-identical frames across splits inflate scores; each subset labels different behaviours, so a plain split can drop a behaviour from test | Random image split | proposed |
 | 7 | 16 Oct | A behaviour not labelled in an image's SCB subset is ignored when scoring that image | Its absence is unknown, not "no one"; scoring it would punish correct flags | Treat as absent | proposed |
 | 8 | 16 Oct | No answer balancing | Balancing breaks the same-image-every-rule pairing that contrastive training and the flip test need | Downsample majority answers | proposed |
 | 9 | 16 Oct | Answer boxes in Qwen-resized pixel space; `max_pixels` identical in training and inference | Qwen2.5-VL grounds boxes on the resized image | Normalised 0–1000 boxes | proposed |
 | 10 | 16 Oct | LoRA run A uses 2× the epochs of run B | Run B has 2× the examples; matched steps and image exposure leave only the rule pairing different | Same epochs (confounded) | proposed |
 | 11 | 16 Oct | Main metric is per-question behaviour F1; box recall is secondary | A 3B model is weak at finding small students in crowded rooms; box-only F1 could be ~0 for every method | Box F1 as main metric | proposed |
-| 12 | | Behaviour set after SCB class check (see PROJECT_PLAN day-1 blocker) | | A / B / C | **open** |
+| 12 | | Behaviour set (PROJECT_PLAN §0, D1) | Depends on #20 | — | **open** |
 | 13 | 16 Oct | Option A ruled out: public SCB has no phone / computer / talk labels | Checked HF subsets and YOLO.zip (training code + teacher-behaviour runs only) | — | agreed |
 | 14 | 16 Oct | Available student classes: discuss (5,392 boxes), TurnHead (11,156), BowHead (4,962), hand-raising (13,453), read (24,078), write (9,841) | `inspect_scb.py` on 3 downloaded subsets | — | fact |
 | 15 | 16 Oct | Split groups by source video across subsets; `group_regex` = digits before "_", else first 4 digits | Same video IDs appear in several subsets; the 4-digit rule is a guess, verified with `--check-leakage` | group per subset | proposed |
 | 16 | | YOLO baseline: use the authors' per-subset weights (`exp/weights/best.pt`) or retrain on our split? | Authors' weights may have trained on images in our test set | retrain YOLOv8 on our train split | **open** |
+| 17 | 16 Oct | Two problems, one model: **class attention** and **invigilation**; invigilation experiments go deeper (extra exam data) | Both need one person to watch a whole room; lesson + exam rules make the flip test meaningful | single application | agreed |
+| 18 | 16 Oct | Label quality (20-image check): discuss 20/20, BowHead 19/20, hand-raising 19/20, TurnHead 16/20 | `preview_class.py` by eye | — | fact |
+| 19 | 16 Oct | Candidate phone source 1: **SCB-Dataset3** (using phone, 5,686 images), Baidu only | Older SCB version; Baidu only (hard to access); authors say it is being remade | — | dropped: use Roboflow (#20) |
+| 20 | 16 Oct | Candidate phone source 2: **Roboflow exam_cheating** (Use_phone, Look_around, Cheat_paper; CC BY 4.0) | Real exam scenes; quality and framing unknown | Exam_Fraud_Detection (labels objects, not behaviour) | to check (Task 2a) |
+| 21 | 16 Oct | Computer use dropped | No public human-labelled source found | detector guesses (no ground truth) | proposed |

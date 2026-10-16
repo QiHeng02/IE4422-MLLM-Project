@@ -2,16 +2,16 @@
 
 IE4422 (Multimodal LLMs) group project, NTU.
 
-**One line:** a vision-language model reads a classroom photo **and** a lesson rule written as text, then flags students whose visible behaviour does not fit that lesson. We test whether LoRA fine-tuning keeps the model reading the rule.
+**One line:** a vision-language model reads a classroom or exam-hall photo **and** a rule written as text, then flags students whose visible behaviour breaks that rule. Two applications, one model: **class attention** (lecturers) and **invigilation** (exams). We test whether LoRA fine-tuning keeps the model reading the rule.
 
-> Talking is fine in a group discussion but not in an exam. A fixed detector gives "talking" the same label in both. Our model gets the lesson rule as input.
+> Reading notes is cheating in a closed-book exam but fine in an open-book one. A fixed detector gives the action the same label in both. Our model gets the rule as input.
 
 | | |
 |---|---|
 | Model | Qwen2.5-VL-3B-Instruct + LoRA |
-| Input | classroom photo (image) + lesson rule and question (text) |
+| Input | classroom / exam photo (image) + rule and question (text) |
 | Output | JSON: flagged behaviours, a box per student, a one-line reason |
-| Data | SCB-Dataset (train / test), DIPSER (second test) |
+| Data | SCB-Dataset (ready) + one exam-behaviour dataset for phone use (being checked); second test set TBC |
 | **Project guide** (scope, model, data, baselines, pipeline, timeline) | [PROJECT_PLAN.md](PROJECT_PLAN.md) |
 
 ## Set up
@@ -68,7 +68,7 @@ outputs/          NOT in git: LoRA checkpoints
 ## Licences
 
 - SCB-Dataset: academic and non-commercial use only ([Whiffe/SCB-dataset](https://github.com/Whiffe/SCB-dataset)).
-- DIPSER: CC BY 4.0.
+- Roboflow exam_cheating, DIPSER: CC BY 4.0.
 - Qwen2.5-VL-3B: Qwen Research License (non-commercial).
 
 This repo is coursework for research use only.
