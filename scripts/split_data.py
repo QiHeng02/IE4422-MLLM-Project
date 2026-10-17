@@ -20,6 +20,11 @@ Very large scene groups (>= `split.big_scene.min_size` photos, e.g. 252 burst sh
 one exam session) go to train only, and only every `keep_every`-th photo is kept.
 In test, one such group would make the score mostly about one room.
 
+`split.video_cap` (SCB only, decisions #31): at most N photos per source video in each pile,
+spread evenly over the video. Neighbouring frames are near-copies: they add time, not
+information. When filling the 70/15/15 quotas, a video counts with its capped size, so one
+500-photo video no longer fills the whole test quota.
+
 --check-leakage computes a 64-bit difference hash (dHash) for every image and
 reports test images whose nearest train image is within
 `split.leakage_hamming_threshold` bits. Review those by eye.
@@ -52,7 +57,8 @@ def group_key(image: str, regex: re.Pattern | None) -> str:
     return _TRAILING.sub("", name) or name
 
 
-def assign_groups(groups: dict[str, list[str]], ratios: dict[str, float], seed: int) -> dict[str, str]:
+def assign_groups(groups: dict[str, list[str]], ratios: dict[str, float], seed: int,
+                  weight: dict[str, int] | None = None) -> dict[str, str]:
     """Split whole groups. Keys of the form "<stratum>/<group>" are split per stratum;
     plain keys form one stratum. Within a stratum: shuffle groups, then fill train,
     val, test up to each image quota (at least one group each when there are >= 3).
@@ -66,7 +72,8 @@ def assign_groups(groups: dict[str, list[str]], ratios: dict[str, float], seed: 
     for subset in sorted(by_subset):
         keys = sorted(by_subset[subset])
         rng.shuffle(keys)
-        total = sum(len(groups[k]) for k in keys)
+        size = (lambda k: weight[k]) if weight else (lambda k: len(groups[k]))  # noqa: E731
+        total = sum(size(k) for k in keys)
         bounds = {"train": ratios["train"] * total, "val": (ratios["train"] + ratios["val"]) * total}
         if len(keys) < 3:
             print(f"WARNING: subset {subset} has only {len(keys)} group(s); it cannot reach every split")
@@ -74,14 +81,14 @@ def assign_groups(groups: dict[str, list[str]], ratios: dict[str, float], seed: 
         for i, k in enumerate(keys):
             left = len(keys) - i
             # place the group by where its midpoint falls, but keep at least one group for val/test
-            mid = filled + len(groups[k]) / 2
+            mid = filled + size(k) / 2
             s = "train" if mid < bounds["train"] else "val" if mid < bounds["val"] else "test"
             if left == 1 and len(keys) >= 3 and "test" not in {split_of[groups[x][0]] for x in keys[:i]}:
                 s = "test"
             elif left == 2 and len(keys) >= 3 and s == "train" and \
                     "val" not in {split_of[groups[x][0]] for x in keys[:i]}:
                 s = "val"
-            filled += len(groups[k])
+            filled += size(k)
             for img in groups[k]:
                 split_of[img] = s
     assert set(split_of.values()) <= set(order)
@@ -159,7 +166,23 @@ def main() -> None:
                 groups[f"{sub}/{sid}"] = members
         print(f"{sub}: {len(imgs)} photos in {len(sub_groups)} scene groups ({n_big} big)")
 
-    split_of = assign_groups(groups, sc["ratios"], cfg["seed"])
+    cap = sc.get("video_cap") or {}
+    weight = None
+    if cap.get("train"):
+        weight = {k: min(len(v), cap["train"]) if k.startswith("scb/") else len(v) for k, v in groups.items()}
+    split_of = assign_groups(groups, sc["ratios"], cfg["seed"], weight)
+    n_capped = 0
+    for k, members in groups.items():
+        n = cap.get(split_of[members[0]]) if k.startswith("scb/") else None
+        if n and len(members) > n:
+            members = sorted(members)
+            keep = {members[int(i)] for i in np.linspace(0, len(members) - 1, n).round()}
+            for img in members:
+                if img not in keep:
+                    del split_of[img]
+                    n_capped += 1
+    if n_capped:
+        print(f"video_cap {cap}: {n_capped} SCB photos left out")
     split_of.update(forced)
     subset_of = {r["image"]: r["subset"] for r in rows}
     for sub in sorted(set(subset_of.values())):
@@ -171,9 +194,10 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     dropped = len(rows) - len(split_of)
     out.write_text(json.dumps({"seed": cfg["seed"], "n_groups": len(groups), "counts": counts,
-                               "dropped_by_thinning": dropped, "split": split_of}, indent=1),
+                               "left_out": dropped, "video_cap": cap, "split": split_of}, indent=1),
                    encoding="utf-8")
-    print(f"{len(groups)} groups -> {counts}  (written to {out}); {dropped} photos left out by thinning")
+    print(f"{len(groups)} groups -> {counts}  (written to {out}); {dropped} photos left out "
+          f"({dropped - n_capped} by thinning, {n_capped} by video_cap)")
     for sub in sorted(set(subset_of.values())):
         c = {s: sum(1 for img, v in split_of.items() if v == s and subset_of[img] == sub)
              for s in ("train", "val", "test")}

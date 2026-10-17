@@ -5,6 +5,7 @@ Runs every no-GPU script the way a team member would, then checks that:
 - a predictor that ignores the rule text scores below 1.0 on the flip test.
 """
 import json
+from collections import Counter
 import shutil
 import subprocess
 import sys
@@ -80,12 +81,25 @@ def test_end_to_end(tmp_path):
     make_subset(raw, "SCB5-Discuss", ["discuss"], n_videos=6, frames=5, seed=1)
     make_subset(raw, "SCB_BowTurnHead", ["BowHead", "TurnHead"], n_videos=6, frames=5, seed=2)
     n_rf = make_roboflow(raw, n_scenes=20, burst=70, seed=3)
+    # Shared frames, as in real SCB: 3 Discuss frames also sit in BowTurnHead (same name and
+    # picture, TurnHead labels), plus 1 name clash with a DIFFERENT picture (must not merge).
+    import numpy as np
+    src, dst = raw / "SCB5-Discuss" / "images" / "train", raw / "SCB_BowTurnHead" / "images" / "train"
+    for f in range(3):
+        name = f"SCB5-Discuss_video00_{f:04d}"
+        shutil.copy(src / f"{name}.jpg", dst / f"{name}.jpg")
+        (dst.parent.parent / "labels" / "train" / f"{name}.txt").write_text("1 0.3 0.3 0.1 0.2\n")
+    clash = "SCB5-Discuss_video01_0000"
+    noise = np.random.default_rng(9).integers(0, 255, (360, 640, 3), dtype=np.uint8)
+    Image.fromarray(noise).save(dst / f"{clash}.jpg")
+    (dst.parent.parent / "labels" / "train" / f"{clash}.txt").write_text("1 0.5 0.5 0.1 0.2\n")
 
     cfg = yaml.safe_load((REPO / "configs/default.yaml").read_text())
     cfg["paths"] = {k: str(tmp_path / v) for k, v in cfg["paths"].items()}
     cfg["paths"]["scb_root"] = str(raw)
     cfg["rules_csv"] = str(REPO / "configs/rules.csv")
     cfg["split"]["group_regex"] = r"(?P<src>video\d+)"
+    cfg["split"]["video_cap"] = {"train": 2, "val": None, "test": None}
     cfg_path = tmp_path / "cfg.yaml"
     cfg_path.write_text(yaml.safe_dump(cfg))
 
@@ -98,7 +112,11 @@ def test_end_to_end(tmp_path):
 
     run("scripts/filter_scb.py", "--config", cfg_path)
     rows = [json.loads(l) for l in open(cfg["paths"]["manifest"])]
-    assert len(rows) == 60 + n_rf
+    assert len(rows) == 60 + 4 + n_rf - 3          # 3 shared frames merged, the clash kept apart
+    merged = [r for r in rows if len(r["subsets"]) > 1]
+    assert len(merged) == 3 and all(r["labelled"] == ["talking", "turning_head"] for r in merged)
+    assert all(r["subset"] == "SCB5-Discuss+SCB_BowTurnHead" for r in merged)
+    assert sum(Path(r["image"]).stem == clash for r in rows) == 2
     assert {b["behaviour"] for r in rows for b in r["boxes"]} == {"talking", "turning_head", "using_phone", "reading_notes"}
     assert any(not r["boxes"] for r in rows)
 
@@ -110,6 +128,9 @@ def test_end_to_end(tmp_path):
         if "video" in img:
             key = Path(img).stem.split("_")[-2]
             assert seen.setdefault(key, s) == s
+    # video_cap: at most 2 photos per SCB video in train
+    train_per_video = Counter(Path(i).stem.split("_")[-2] for i, s in split.items() if s == "train" and "video" in i)
+    assert train_per_video and max(train_per_video.values()) <= 2
     # Roboflow: a scene and its hand-made copy stay together; the burst session is train only, thinned
     from ie4422.scenes import scene_name_key
     scene_split = {}
@@ -132,11 +153,18 @@ def test_end_to_end(tmp_path):
     load = lambda n: [json.loads(l) for l in open(qdir / f"{n}.jsonl")]  # noqa: E731
     train_c, train_s, val, test = load("train_contrastive"), load("train_single"), load("val"), load("test")
     assert len(train_c) == 2 * len(train_s)
+    # each question lists only the behaviours labelled for its photo (decisions #30, #32)
+    assert all(q["behaviours"] == ["talking"] and "Look only for these behaviours: talking." in q["question"]
+               for q in train_c + val + test if q["subset"] == "SCB5-Discuss")
+    assert all(q["behaviours"] == ["talking", "turning_head"]
+               for q in train_c + val + test if q["subset"] == "SCB5-Discuss+SCB_BowTurnHead")
+    assert all(q["behaviours"] == ["turning_head", "using_phone", "reading_notes"]
+               for q in test if q["subset"] == "exam_cheating")
     assert not any(q["heldout"] for q in train_c + train_s + val)
     assert {q["context"] for q in test} == {"lecture", "closed_book_exam", "participation"}
     assert all(q["context"] == "participation" for q in test if q["heldout"])
     # a discuss-only image must ignore turning_head (not labelled in that subset)
-    q = next(q for q in train_c + val + test if "Discuss" in q["image"])
+    q = next(q for q in train_c + val + test if q["subset"] == "SCB5-Discuss")
     assert "turning_head" in q["ignore"]
     assert {Path(q["image"]).parts[-4] for q in test} == {"SCB5-Discuss", "SCB_BowTurnHead", "exam_cheating"}, \
         "every subset should reach the test split"

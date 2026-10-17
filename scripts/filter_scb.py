@@ -10,6 +10,9 @@ are kept as "no one" examples.
 Each manifest row records `labelled`: the behaviours that subset actually
 annotates. A behaviour not in `labelled` is unknown for that image (not "absent")
 and is ignored when scoring.
+
+The same SCB frame often appears in several subsets (decisions #32). Those rows are
+merged into one (union of labels) when the pictures match; `subset` becomes "A+B".
 """
 from __future__ import annotations
 
@@ -23,7 +26,8 @@ from ie4422.boxes import yolo_to_xyxy
 from ie4422.config import REPO_ROOT, load_config, repo_path
 from ie4422.io import write_jsonl
 from ie4422.rules import load_rules
-from ie4422.scb import class_names, find_subset_yamls, iter_images, label_path_for
+from ie4422.scb import class_names, find_subset_yamls, iter_images, label_path_for, merge_shared_frames
+from ie4422.scenes import dhash
 
 
 def main() -> None:
@@ -43,7 +47,7 @@ def main() -> None:
     if unknown:
         raise SystemExit(f"scb_class_map targets {sorted(unknown)} are not rows in rules.csv")
 
-    rows, kept, n_neg = [], Counter(), 0
+    rows: list[dict] = []
     for y in find_subset_yamls(root):
         names = class_names(y)
         labelled = sorted({cmap[n] for n in names if n in cmap})
@@ -70,8 +74,6 @@ def main() -> None:
                     continue
                 cx, cy, bw, bh = map(float, parts[1:5])
                 boxes.append({"behaviour": cmap[src], "bbox": [round(v, 1) for v in yolo_to_xyxy(cx, cy, bw, bh, w, h)]})
-                kept[cmap[src]] += 1
-            n_neg += not boxes
             try:
                 rel = img.resolve().relative_to(REPO_ROOT)
             except ValueError:
@@ -82,10 +84,19 @@ def main() -> None:
                 "orig_split": next((p for p in img.parts if p in {"train", "val", "valid", "test"}), None),
             })
 
+    # Merge frames shared by several SCB subsets (not scene subsets such as Roboflow)
+    def same_picture(a: str, b: str) -> bool:
+        return int((dhash(repo_path(a)) != dhash(repo_path(b))).sum()) <= 2
+    n_before = len(rows)
+    rows, removed = merge_shared_frames(rows, same_picture, set(cfg["split"].get("scene_subsets") or []))
+    combos = Counter(r["subset"] for r in rows if len(r["subsets"]) > 1)
+    print(f"merged {removed} duplicate rows ({n_before} -> {len(rows)} photos); shared frames: {dict(combos)}")
+
     n = write_jsonl(out, rows)
     print(f"wrote {n} images to {out}")
+    kept = Counter(b["behaviour"] for r in rows for b in r["boxes"])
     print(f"boxes kept per behaviour: {dict(kept)}")
-    print(f"images with none of our behaviours (kept as 'no one'): {n_neg}")
+    print(f"images with none of our behaviours (kept as 'no one'): {sum(not r['boxes'] for r in rows)}")
     missing = set(rules.behaviours) - set(kept)
     if missing:
         print(f"WARNING: no boxes at all for {sorted(missing)}. Map them in scb_class_map or drop them from rules.csv.")

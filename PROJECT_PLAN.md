@@ -229,7 +229,9 @@ Box counts in the SCB release: discuss 5,392 · TurnHead 11,156 · BowHead 4,962
 
 | Problem | Handling |
 |---|---|
-| Each dataset or subset labels only its own classes | `filter_scb.py` records `labelled` per photo; scoring ignores behaviours that photo's dataset does not label |
+| Each dataset or subset labels only its own classes | Frames shared by several SCB subsets are merged (union of labels, #32). Scoring ignores unlabelled behaviours, and **each question lists only the behaviours labelled for its photo (#30)**, so no training answer says "no one" about an unlabelled student |
+| A few videos dominate; hand-raising was 63% of training (answer always "no one" in lecture and exam) | Cap per source video, `split.video_cap` (#31); N set after the GPU timing test |
+| Every Discuss photo shows talking, so with its list ("talking") the answer never varies | Its behaviour-level score is trivial: report results per subset; RQ2 evidence comes from BowTurnHead and Roboflow |
 | So talking is never scored on Roboflow photos, and phone is never scored on SCB photos | State it. RQ3 false flags cover only the behaviours Roboflow labels. |
 | Every Discuss photo contains discussion: no "no one talking" examples | Open: accept as a limitation, or check ~50 other SCB photos by hand and use them as "no one" examples |
 | TurnHead labels ~80% correct | Keep; state as a limitation |
@@ -281,6 +283,7 @@ Every script reads `configs/default.yaml`. Change settings there, never in code.
 - **Why:** keeps only the boxes of the behaviours we use, under our names.
 - **Makes:** `data/processed/manifest.jsonl`: one line per photo, with its size, dataset, the behaviours that dataset labels, and the kept boxes.
 - **Used by:** steps 3 and 4.
+- **Also:** merges frames shared by several SCB subsets into one photo with all their labels (#32).
 - **Waits for:** D1. Every behaviour in `rules.csv` must be in the class map.
 - **Done when:** the script prints no `WARNING: no boxes`.
 
@@ -426,7 +429,8 @@ Put owner initials in the brackets. Tick the boxes when done and commit. **Submi
 - [ ] **Stakeholder email** [ ]. *Needs: the D3 draft.* Put the new flag table in the email; send it to Dr Lim.
   *Done when:* sent; the date is in `docs/stakeholder_notes.md`.
 - [ ] **Steps 1–4** [Mambo]. *Needs: the config update (done).*
-- [ ] **20-question GPU test** [ ]. *Needs: GPU env and `val.jsonl`.* `run_vlm.py --limit 20`; read the answers.
+- [ ] **20-question GPU test** [ ]. *Needs: GPU env and `val.jsonl`.* `run_vlm.py --limit 20`; read the answers. **Write down seconds per question**: it sets the real cost of every test run.
+- [ ] **Training time check** [ ]. *Needs: GPU env.* Run LoRA run A for ~50 steps and time it. Use the speed to set `split.video_cap` (#31), then redo steps 3–4 before any baseline.
 
 ### Mon 19 – Thu 22 Oct
 

@@ -10,6 +10,9 @@ Writes to paths.questions_dir:
   test_reworded.jsonl      every rule, paraphrased wording never seen in training
 
 Held-out rules (heldout_contexts) never appear in train or val.
+With `build.behaviour_list: labelled` (decisions #30), each question lists only the
+behaviours labelled for its photo (after merging shared frames, #32), so every answer key is
+complete for what it asks. Photo caps live in split_data.py (`split.video_cap`, #31).
 
 Each row:
   qid, image, split, context, wording, heldout, question,
@@ -17,6 +20,8 @@ Each row:
   gt             [{"behaviour", "bbox_2d"}] flagged students, boxes in Qwen-resized pixels
   ignore         behaviours not scored for this question ("unused" rule cell, or not labelled in this subset)
   model_wh       [w, h] of the image after Qwen's resize
+  behaviours     the behaviours this question lists
+  subset         dataset folder(s) of the photo ("A+B" for a merged shared frame)
 """
 from __future__ import annotations
 
@@ -54,8 +59,10 @@ def make_question(row: dict, split: str, context: str, wording: str, sentence: s
     gt = [{"behaviour": box["behaviour"],
            "bbox_2d": scale_box(box["bbox"], (row["width"], row["height"]), (mw, mh))}
           for box in row["boxes"] if box["behaviour"] in flag and box["behaviour"] not in ignore]
-    question = cfg["question"].format(context=sentence,
-                                      behaviours=", ".join(PRETTY(x) for x in rules.behaviours))
+    listed = list(rules.behaviours)
+    if b.get("behaviour_list", "all") == "labelled":
+        listed = [x for x in rules.behaviours if x in row["labelled"]]
+    question = cfg["question"].format(context=sentence, behaviours=", ".join(PRETTY(x) for x in listed))
     answer = {"flagged": [{"bbox_2d": g["bbox_2d"], "behaviour": PRETTY(g["behaviour"])} for g in gt],
               "reason": reason_text(gt, sentence)}
     return {
@@ -63,7 +70,7 @@ def make_question(row: dict, split: str, context: str, wording: str, sentence: s
         "image": row["image"], "split": split, "context": context, "wording": wording,
         "heldout": context in cfg["heldout_contexts"], "question": question,
         "answer": json.dumps(answer, ensure_ascii=False), "gt": gt, "ignore": ignore,
-        "model_wh": [mw, mh],
+        "model_wh": [mw, mh], "behaviours": listed, "subset": row["subset"],
     }
 
 
@@ -82,6 +89,7 @@ def main() -> None:
     rows = list(read_jsonl(repo_path(cfg["paths"]["manifest"])))
     split_of = json.loads(repo_path(cfg["paths"]["splits"]).read_text(encoding="utf-8"))["split"]
     rng = random.Random(cfg["seed"])
+
     train_ctx, all_ctx = cfg["train_contexts"], list(ctx)
     out: dict[str, list[dict]] = {k: [] for k in
                                   ("train_single", "train_contrastive", "val", "test", "test_reworded")}
@@ -114,6 +122,16 @@ def main() -> None:
             if sub:
                 by[c] = f"{sum(bool(q['gt']) for q in sub) / len(sub):.0%} of {len(sub)}"
         print(f"{name:<20}{len(qs):>10}   {by}")
+    # Positive rate per subset and setting: a subset whose answer never varies in a setting
+    # gives the model a shortcut there (it can answer from the list + setting alone).
+    print("\npositive rate per subset (train_contrastive + test):")
+    for sub in sorted({q["subset"] for q in out["test"]}):
+        cells = []
+        for c in all_ctx:
+            qs = [q for q in out["train_contrastive"] + out["test"] if q["subset"] == sub and q["context"] == c]
+            if qs:
+                cells.append(f"{c} {sum(bool(q['gt']) for q in qs) / len(qs):.0%}")
+        print(f"  {sub}: " + " | ".join(cells))
     print(f"written to {qdir}")
 
 

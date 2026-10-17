@@ -67,7 +67,8 @@ heldout_contexts: [participation]
 # Neutral wording: the participation setting points out GOOD behaviour, so the question
 # must not say "does not fit" or "for review". The JSON key stays "flagged".
 question: >-
-  {context} Which students should be pointed out in this situation?
+  {context} Look only for these behaviours: {behaviours}.
+  Which students should be pointed out in this situation?
   Answer only with JSON in this format:
   {{"flagged": [{{"bbox_2d": [x1, y1, x2, y2], "behaviour": "<one of: {behaviours}>"}}],
   "reason": "<one sentence>"}}. Use {{"flagged": [], "reason": "..."}} if no one.
@@ -93,6 +94,12 @@ split:
 
   leakage_hamming_threshold: 5      # dHash distance counted as a near-duplicate
 
+  # SCB: at most N photos per source video in each pile, spread over the video (decisions #31, D7).
+  # null = no cap. Set train/val after the GPU timing test (check B, 17 Oct, before merging:
+  # N=10 -> ~1,700 SCB train photos, N=20 -> ~3,000). Test can keep a higher cap: BowTurnHead's
+  # test pile (7 videos) carries most of the SCB RQ2 evidence.
+  video_cap: {train: null, val: null, test: null}
+
 # ---------------------------------------------------------------------------
 # Training data
 # ---------------------------------------------------------------------------
@@ -105,6 +112,14 @@ build:
   # inference, or boxes will be wrong.
   min_pixels: 3136                  # 56*56
   max_pixels: 1003520               # 1280*28*28
+
+  # Which behaviours each question lists, decisions.md #30 (D8).
+  #   labelled: only the behaviours labelled for that photo (after merging frames shared by
+  #             several SCB subsets, #32). Each subset labels only its own classes; listing all
+  #             5 would train "no one" answers for students nobody labelled, and teach the model
+  #             to decide from the photo's style (the failure RQ2 tests).
+  #   all:      every behaviour in rules.csv.
+  behaviour_list: labelled
 
 # ---------------------------------------------------------------------------
 # Model
