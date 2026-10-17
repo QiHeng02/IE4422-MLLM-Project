@@ -1,5 +1,6 @@
-behaviour,exam,group_discussion,computer_lab
-talking,flag,ok,flag
-turning_head,flag,ok,unused
-using_phone,flag,flag,flag
-using_computer,flag,ok,ok
+behaviour,lecture,closed_book_exam,participation
+talking,flag,flag,flag
+turning_head,ok,flag,ok
+hand_raising,ok,ok,flag
+using_phone,flag,flag,ok
+reading_notes,ok,flag,ok

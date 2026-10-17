@@ -20,50 +20,55 @@ paths:
 rules_csv: configs/rules.csv
 
 # Map dataset class names (exactly as in each dataset's yaml) -> our behaviour names.
-# Classes available (checked 16 Oct):
+# Classes available (checked 16-17 Oct):
 #   SCB (HF): discuss, TurnHead, BowHead, hand-raising, read, write
 #   Roboflow exam_cheating v2 (checked 17 Oct, passes): Use_phone, Look_around, Cheat_paper, Normal
 #     Every student is boxed (Normal = not cheating). Use_phone boxes the PHONE, not the student.
-# Final list = PROJECT_PLAN.md decision D1. Every behaviour in rules.csv must appear here.
+# Behaviours = decision D1 (decisions.md #12, 17 Oct). Every behaviour in rules.csv must appear here.
 scb_class_map:
   discuss: talking
   TurnHead: turning_head
-  # BowHead: head_down          # if chosen (D1)
-  # hand-raising: hand_raising  # if chosen (D1)
-  # Use_phone: using_phone      # Roboflow (Task 2a passed), if chosen in D1
-  # Look_around: turning_head   # Roboflow (Task 2a passed), if chosen in D1
-  # Cheat_paper: reading_notes  # Roboflow (Task 2a passed), if chosen in D1
+  Look_around: turning_head          # Roboflow; same action as SCB TurnHead (merged, D1)
+  hand-raising: hand_raising
+  Use_phone: using_phone             # Roboflow; box is on the phone (decisions #26)
+  Cheat_paper: reading_notes         # Roboflow
+  # Not used: BowHead (ambiguous: often note-taking), read / write (labels not checked).
+  # Normal is not a behaviour: photos with only Normal boxes become "no one" examples.
 
 # ---------------------------------------------------------------------------
-# Settings ("contexts" in the code)
+# Settings ("contexts" in the code) = decision D2 (decisions.md #27)
 # ---------------------------------------------------------------------------
-# !! OLD DESIGN below (computer lab, held-out setting). Rewrite after decisions
-# D2 and D3 (PROJECT_PLAN.md section 0), together with rules.csv.
-# canonical: wording used for train, validation and the main test.
-# paraphrases: NEVER used in training; only for the reworded-rule test (RQ2).
+# Each setting is a column in rules.csv. The sentence names the situation, never the
+# behaviours (otherwise the text gives the answer away and RQ2 tests nothing).
+# canonical: used for train, validation and the main test.
+# paraphrases: NEVER used in training; only for the reworded-setting test.
 contexts:
-  exam:
-    canonical: "The class is sitting a closed-book exam."
+  lecture:
+    canonical: "This is a lecture."
     paraphrases:
-      - "Students are under test conditions with no materials allowed."
-      - "This is a formal examination."
-  group_discussion:
-    canonical: "The class is doing a group discussion."
+      - "The teacher is giving a talk to the class."
+      - "Students are attending a lesson taught from the front."
+  closed_book_exam:
+    canonical: "This is a closed-book exam."
     paraphrases:
-      - "Students are working together and talking in small groups."
-      - "This is a collaborative group activity."
-  computer_lab:
-    canonical: "The class is doing a computer lab exercise."
+      - "Students are sitting a written test without notes or books."
+      - "An examination is in progress and no materials are allowed."
+  participation:
+    canonical: "This is a lesson, and the teacher is checking which students are taking part."
     paraphrases:
-      - "Students are working on laptops on a programming task."
-      - "This is a hands-on computer practical."
+      - "The teacher wants to see who is actively participating in class."
+      - "Class participation is being recorded for this lesson."
 
-train_contexts: [exam, group_discussion]   # computer_lab is held out (unseen-rule test)
-heldout_contexts: [computer_lab]
+train_contexts: [lecture, closed_book_exam]
+# Held out = never in train or val. Tests whether the text alone can switch the model to
+# an application it was never trained on (decisions.md #29).
+heldout_contexts: [participation]
 
+# Neutral wording: the participation setting points out GOOD behaviour, so the question
+# must not say "does not fit" or "for review". The JSON key stays "flagged".
 question: >-
-  {context} Which students should be flagged for review because their
-  behaviour does not fit this lesson? Answer only with JSON in this format:
+  {context} Which students should be pointed out in this situation?
+  Answer only with JSON in this format:
   {{"flagged": [{{"bbox_2d": [x1, y1, x2, y2], "behaviour": "<one of: {behaviours}>"}}],
   "reason": "<one sentence>"}}. Use {{"flagged": [], "reason": "..."}} if no one.
 

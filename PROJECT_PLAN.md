@@ -40,13 +40,13 @@ The team's reference for this project. Read Section 0–3 once to understand the
 
 ### Open decisions
 
-Each decision blocks a pipeline step (Section7). Settle D1, D2, D3 and D6 
+Each decision blocks a pipeline step (Section7). **D1–D3 decided 17 Oct (#12, #27–#29); D6 proposed (#24).** The team confirms them.
 
 | # | Decision | Why it matters | Blocks | Needs first |
 |---|---|---|---|---|
-| D1 | **Behaviour list** (see [Section1b](#behaviours)) | Only behaviours with boxes drawn by people can be scored | Step 1 (filter), D3 | Task 2a result |
-| D2 | **Settings**: which sentences the model gets, e.g. "This is a lecture." (see [Section1b](#settings)) | RQ2 only works if some answers change between settings | Step 2 (flag table), step 4 (questions) | team |
-| D3 | **Flag table**: for each behaviour in each setting, flag or OK (see [Section1b](#the-flag-table)) | It makes every answer key | Step 4 | D1, D2; Dr Lim confirms it |
+| D1 | **Behaviour list** (see [Section1b](#behaviours)). ✅ **17 Oct:** talking, turning head (SCB TurnHead + Roboflow Look_around), hand-raising, using phone, reading notes. Head down dropped (#12) | Only behaviours with boxes drawn by people can be scored | Step 1 (filter), D3 | done |
+| D2 | **Settings** (see [Section1b](#settings)). ✅ **17 Oct:** lecture and closed-book exam (trained); participation (held out, test only) (#27, #29) | RQ2 only works if some answers change between settings | Step 2 (flag table), step 4 (questions) | done |
+| D3 | **Flag table** (see [Section1b](#the-flag-table)). ✅ **17 Oct:** `configs/rules.csv`; `scripts/check_rules.py` passes (#28) | It makes every answer key | Step 4 | done. The team freezes it; Dr Lim reviews example outputs in round 2 |
 | D4 | **YOLO baseline**: train one YOLO on our training photos, or use the SCB authors' models | The authors' models are 3 separate models (one per SCB subset, older YOLO format with `exp/opt.yaml`). None covers the Roboflow classes, and our script loads one model. Their training photos may also be in our test set. **Recommendation: train our own.** | Step 5 (YOLO) | before 19 Oct |
 | D5 | **Third test dataset** (DIPSER): keep or drop? | SCB + Roboflow already give two datasets. DIPSER needs 100–200 photos labelled by hand. **Recommendation: optional.** | Week 2 labelling work | team |
 | D6 | **How to split Roboflow photos.** **Proposal (#24), code ready:** our own split by scene (file-name rules + picture fingerprint); the 2 huge scenes go to train only, every 5th photo kept | Task 2a found ~136 real scenes in 772 photos, and Roboflow's own split leaks | Step 3 (split) | team confirms |
@@ -73,10 +73,10 @@ A fixed detector cannot tell these apart unless someone rewrites its rules in co
 ### Our idea
 The model gets **two inputs**: a photo, and one sentence that says the setting. It flags the students whose visible behaviour does not fit **that** setting. The same photo can have different correct answers:
 
-| Input 1: photo | Input 2: setting (text) | Correct output (example only; real flags = D3) |
+| Input 1: photo | Input 2: setting (text) | Correct output (from our flag table, D3) |
 |---|---|---|
-| Student A talking, student B head down | "This is a **lecture**." | Flag A (talking) and B (head down) |
-| *same photo* | "This is an **exam**." | Flag A only (head down is normal when writing) |
+| Student A talking, student B turning head | "This is a **lecture**." | Point out A only (turning to the board or a screen is normal) |
+| *same photo* | "This is a **closed-book exam**." | Point out A and B |
 | Student C on a phone, student D reading notes | "This is a **closed-book exam**." | Flag C and D |
 | *same photo* | "This is a **lecture**." | Flag C only (reading is fine in a lecture) |
 
@@ -88,10 +88,12 @@ The output is a box around each flagged student, the behaviour, and a one-line r
 |---|---|---|
 | User | lecturers and TAs | exam invigilators |
 | Settings | lesson types, e.g. lecture, group discussion | exam types, e.g. closed-book, open-book |
-| Behaviours (data permitting) | talking, turning head, head down, hand-raising | using phone, looking around, reading notes, talking |
+| Behaviours (D1) | talking, using phone | talking, turning head (looking around), using phone, reading notes |
 | Output wording | "may need a check", never "not paying attention" | "flag for review", never "cheating" |
 
 Both use one model and one pipeline; only the setting text differs. The research questions are in [Section3](#3-research-questions).
+
+**Held-out test (#29):** a third setting, *participation* ("the teacher is checking which students are taking part"), is **never trained**. The answer is hand-raising and talking. It tests whether the text alone can switch the model to an application it never saw.
 
 ### Why it matters
 - **One tool for two jobs.** The text decides the task, so the text input does real work (our main multimodal point).
@@ -112,8 +114,9 @@ The model learns and is tested like a student: with **questions and answer keys*
 
 ### Settings
 **What:** the sentence that tells the model where it is, e.g. "This is a lecture." Each setting is a column in the flag table.
-**Decision D2:** which settings, and how many. Minimum: one lesson setting and one exam setting. Open-book exam or group discussion can be added.
-**Held-out setting (optional):** a setting that we never use in training. Testing on it shows whether the model follows a setting it never saw. Not needed for RQ1–RQ3.
+**Decision D2 (17 Oct):** lecture and closed-book exam are trained. Participation is held out.
+**Held-out setting:** a setting that we never use in training. Testing on it shows whether the model follows a setting it never saw. Expect LoRA to do worse than prompting here: in training, hand-raising is never pointed out.
+**Rule for the sentences:** name the situation, never the behaviours. The question is neutral ("Which students should be pointed out in this situation?") because participation points out good behaviour.
 
 ### Behaviours
 **What:** the visible student actions the model looks for, e.g. using phone, turning head, talking.
@@ -123,20 +126,22 @@ The model learns and is tested like a student: with **questions and answer keys*
 ### The flag table
 **What:** a grid that says, for each behaviour in each setting, `flag`, `ok` or `unused` (unclear, not scored). It is stored in `configs/rules.csv`.
 
-| Behaviour | Lecture | Closed-book exam |
-|---|---|---|
-| Head down | flag | ok |
-| Reading notes | ok | flag |
-| Using phone | flag | flag |
+| Behaviour | Lecture | Closed-book exam | Participation (held out) | Why |
+|---|---|---|---|---|
+| Talking | flag | flag | flag | Off-task in a lecture, possible cheating in an exam; taking part in a discussion |
+| Turning head | ok | flag | ok | Following the teacher or a screen; looking around in an exam |
+| Hand-raising | ok | ok | flag | Never wrong; the sign of taking part |
+| Using phone | flag | flag | ok | Off-task or cheating; not a sign of taking part |
+| Reading notes | ok | flag | ok | Normal in a lecture; not allowed in a closed-book exam |
 
-*(Example only; the team fills in the real table, D3.)*
+*(D3, decided 17 Oct. Head down was dropped: often note-taking.)*
 
 **Why we need it:** the datasets only say *what* a student does ("head down"), not whether it is wrong. The table adds "wrong in this setting". It is used to:
 1. **make the answer keys** for every photo + setting (step 4),
 2. **run the YOLO baseline**, which applies the table as an if-statement (step 5),
 3. **check with the stakeholder** what should be flagged (round 1).
 
-**Key constraint for RQ2:** RQ2 asks whether the model uses the text or guesses the setting from the photo. To test this, **some rows must change between the lesson and exam columns, for photos from both datasets.** In the example, head down (SCB photos) and reading notes (Roboflow photos) do this. Using phone does not, so it cannot show whether the model reads the text.
+**Key constraint for RQ2:** RQ2 asks whether the model uses the text or guesses the setting from the photo. To test this, **some rows must change between the lesson and exam columns, for photos from both datasets.** In our table, turning head (SCB TurnHead photos) and reading notes (Roboflow photos) do this. Talking, hand-raising and using phone do not, so the Discuss and hand-raising photos add no RQ2 evidence. `scripts/check_rules.py` checks this rule.
 
 ---
 
@@ -210,7 +215,7 @@ SCB classes `talk`, `using the phone` and `using the computer` appear in the SCB
 |---|---|---|---|
 | Talking (`discuss`) | SCB | 20/20 | both |
 | Turning head (`TurnHead`) | SCB | 16/20 ⚠️ weakest | both |
-| Head down (`BowHead`) | SCB | 19/20 | attention |
+| ~~Head down (`BowHead`)~~ | SCB | 19/20 | dropped (D1): often note-taking |
 | Hand-raising | SCB | 19/20 | attention |
 | Reading / writing | SCB | not checked | both |
 | Using phone | Roboflow | correct ⚠️ box is on the **phone**; most photos are **not exam scenes** | invigilation |
@@ -284,7 +289,7 @@ Every script reads `configs/default.yaml`. Change settings there, never in code.
 - **Why:** step 4 uses these to make the answer keys and the question text.
 - **Note:** both files still hold the **old design** (computer lab, using computer). They must change before step 4. Check that the question text in `default.yaml` (`question:`) suits exam settings too; it says "this lesson".
 - **Waits for:** D2, D3.
-- **Done when:** Dr Lim confirms the table (stakeholder round 1) and `docs/stakeholder_notes.md` records it. **Then freeze it.** If he changes it later, redo step 4 and re-run every baseline.
+- **Done when:** `python scripts/check_rules.py` prints "All checks passed" (✅ 17 Oct). **The table is frozen.** Dr Lim reviews example outputs in round 2. If the table changes later, redo step 4 and re-run every baseline.
 
 #### Step 3. Split the photos
 - **You do:** `python scripts/split_data.py --check-leakage`
@@ -360,6 +365,8 @@ Every script reads `configs/default.yaml`. Change settings there, never in code.
 | **Precision per setting and per dataset** | Share of flags that are correct, e.g. on Roboflow photos with exam text. For RQ3: only scenes tagged `exam = yes` (#25) | RQ3 (false flags) | ❌ to add |
 | **Switch rate** | On photos whose correct answer changes between settings: share where the model's answer also changes | RQ2 (clearer than `flip_acc`, which also drops when a box is missed) | ❌ to add |
 | `unseen_f1`, `wording_para<n>_f1` | Held-out setting; reworded setting text | optional tests | ✅ |
+| **Per-behaviour F1 in the held-out setting** | Participation, per row. Talking is `flag` in every setting, so it inflates `unseen_f1`; hand-raising is the real test | held-out test (#29) | ❌ to add |
+| **Main F1 on trained settings only** | `flag_f1` now averages over every test question, held-out ones included; report `known_f1` as the headline | all RQs | ❌ to switch |
 
 **Why F1, not accuracy.** Most checks are "not flagged". A model that never flags anyone would get high accuracy and zero F1.
 
@@ -405,9 +412,8 @@ Put owner initials in the brackets. Tick the boxes when done and commit. **Submi
 - [x] **Task 2a: check Roboflow exam_cheating** [Mambo]. *Needs: nothing.* **Done 17 Oct: passes with limits** (`decisions.md` #20, #24–#26).
   Download it in YOLOv8 format, from a version **without augmentation** if there is one (`data/README.md`), then run step 0 on it. Record: box counts, "right out of 20" for Use_phone, Look_around and Cheat_paper, whether photos are wide exam halls or close-ups, and whether the export holds edited copies of the same photo (D6).
   *Done when:* the results are posted to the group.
-- [ ] **Tag Roboflow scenes** [ ]. *Needs: Task 2a.* `python scripts/scene_sheet.py`, open the pictures in `results/data_check/scenes/`, write `yes` / `no` in the `exam` column of `configs/scene_tags.csv` (~136 rows, ~30 min). Commit the CSV.
-  *Why:* RQ3 is scored only on real exam scenes (#25). *Done when:* every row has `yes` or `no`.
-- [ ] **Team meeting** [everyone]. *Needs: Task 2a results.*
+- [x] **Tag Roboflow scenes**: done 17 Oct (119 exam scenes, 24 not; phone rows being rechecked).
+- [ ] **Team meeting** [everyone]. *Needs: Task 2a results.* **D1–D3 drafted by Mambo 17 Oct: the team confirms.**
   Confirm approach A (#22). Decide D1, D2, D3 (draft) and D6. Ideally D4 and D5 too. Check the D3 draft against the RQ2 constraint (Section1b).
   *Done when:* each decision is a row in `docs/decisions.md`.
 - [ ] **GPU environment** [ ]. *Needs: nothing; can start now.*
@@ -416,10 +422,10 @@ Put owner initials in the brackets. Tick the boxes when done and commit. **Submi
 
 ### Sun 18 Oct
 
-- [ ] **Update the config** []. *Needs: the meeting.* Step 1 (class map) and step 2 (`rules.csv`, `contexts`).
+- [x] **Update the config**: done 17 Oct (class map, `rules.csv`, settings, neutral question).
 - [ ] **Stakeholder email** [ ]. *Needs: the D3 draft.* Put the new flag table in the email; send it to Dr Lim.
   *Done when:* sent; the date is in `docs/stakeholder_notes.md`.
-- [ ] **Steps 1–4** []. *Needs: the config update; D6 for Roboflow.*
+- [ ] **Steps 1–4** [Mambo]. *Needs: the config update (done).*
 - [ ] **20-question GPU test** [ ]. *Needs: GPU env and `val.jsonl`.* `run_vlm.py --limit 20`; read the answers.
 
 ### Mon 19 – Thu 22 Oct

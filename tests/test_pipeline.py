@@ -86,9 +86,11 @@ def test_end_to_end(tmp_path):
     cfg["paths"]["scb_root"] = str(raw)
     cfg["rules_csv"] = str(REPO / "configs/rules.csv")
     cfg["split"]["group_regex"] = r"(?P<src>video\d+)"
-    cfg["scb_class_map"]["Look_around"] = "turning_head"
     cfg_path = tmp_path / "cfg.yaml"
     cfg_path.write_text(yaml.safe_dump(cfg))
+
+    out = run("scripts/check_rules.py", "--config", cfg_path)   # flag table + RQ2 rule per dataset
+    assert "OK   dataset SCB" in out and "OK   dataset exam_cheating" in out
 
     out = run("scripts/inspect_scb.py", "--root", raw, "--out", tmp_path / "check")
     assert "discuss" in out and "TurnHead" in out
@@ -97,7 +99,7 @@ def test_end_to_end(tmp_path):
     run("scripts/filter_scb.py", "--config", cfg_path)
     rows = [json.loads(l) for l in open(cfg["paths"]["manifest"])]
     assert len(rows) == 60 + n_rf
-    assert all(b["behaviour"] in {"talking", "turning_head"} for r in rows for b in r["boxes"])
+    assert {b["behaviour"] for r in rows for b in r["boxes"]} == {"talking", "turning_head", "using_phone", "reading_notes"}
     assert any(not r["boxes"] for r in rows)
 
     out = run("scripts/split_data.py", "--config", cfg_path, "--check-leakage")
@@ -131,7 +133,8 @@ def test_end_to_end(tmp_path):
     train_c, train_s, val, test = load("train_contrastive"), load("train_single"), load("val"), load("test")
     assert len(train_c) == 2 * len(train_s)
     assert not any(q["heldout"] for q in train_c + train_s + val)
-    assert {q["context"] for q in test} == {"exam", "group_discussion", "computer_lab"}
+    assert {q["context"] for q in test} == {"lecture", "closed_book_exam", "participation"}
+    assert all(q["context"] == "participation" for q in test if q["heldout"])
     # a discuss-only image must ignore turning_head (not labelled in that subset)
     q = next(q for q in train_c + val + test if "Discuss" in q["image"])
     assert "turning_head" in q["ignore"]

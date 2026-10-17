@@ -96,20 +96,25 @@ def dhash(path: Path, size: int = 8) -> int:
 
 
 def leakage_report(split_of: dict[str, str], thr: int) -> list[dict]:
-    hashes = {img: dhash(repo_path(img)) for img in split_of}
-    train = [(img, h) for img, h in hashes.items() if split_of[img] == "train"]
-    if not train:
+    """Nearest train image (by dHash) for every test image. Vectorised: tens of thousands of
+    photos take seconds, not hours."""
+    imgs = sorted(split_of)
+    hashes = np.array([dhash(repo_path(i)) for i in imgs], dtype=np.uint64)
+    is_train = np.array([split_of[i] == "train" for i in imgs])
+    if not is_train.any():
         return []
-    train_h = np.array([h for _, h in train], dtype=np.uint64)
+    train_idx = np.nonzero(is_train)[0]
+    train_bytes = hashes[train_idx].view(np.uint8).reshape(-1, 8)
+    popcount = np.array([bin(v).count("1") for v in range(256)], dtype=np.uint8)
     hits = []
-    for img, h in hashes.items():
+    for k, img in enumerate(imgs):
         if split_of[img] != "test":
             continue
-        x = np.bitwise_xor(train_h, np.uint64(h))
-        dist = np.array([bin(int(v)).count("1") for v in x])
+        x = np.bitwise_xor(train_bytes, hashes[k:k + 1].view(np.uint8))
+        dist = popcount[x].sum(axis=1, dtype=np.int32)
         j = int(dist.argmin())
         if dist[j] <= thr:
-            hits.append({"test": img, "train": train[j][0], "hamming": int(dist[j])})
+            hits.append({"test": img, "train": imgs[train_idx[j]], "hamming": int(dist[j])})
     return sorted(hits, key=lambda r: r["hamming"])
 
 

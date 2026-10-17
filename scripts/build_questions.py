@@ -35,11 +35,13 @@ PRETTY = lambda b: b.replace("_", " ")  # noqa: E731
 
 
 def reason_text(gt: list[dict], context_sentence: str) -> str:
+    """Neutral wording: in the participation setting the pointed-out behaviour is GOOD."""
+    situation = context_sentence.rstrip(".").lower()
     if not gt:
-        return "No visible behaviour breaks the rule for this lesson."
+        return f"No student needs to be pointed out here ({situation})."
     c = Counter(g["behaviour"] for g in gt)
     parts = [f"{n} {'student' if n == 1 else 'students'} {PRETTY(b)}" for b, n in sorted(c.items())]
-    return f"{', '.join(parts)}; this does not fit the lesson: {context_sentence.rstrip('.').lower()}."
+    return f"{', '.join(parts)}; relevant here ({situation})."
 
 
 def make_question(row: dict, split: str, context: str, wording: str, sentence: str,

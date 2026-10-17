@@ -24,13 +24,13 @@ COLOURS = ["#e4572e", "#2e86ab", "#f3a712", "#6a4c93", "#29bf12", "#ff66b3"]
 
 
 def summary_line(flagged: list[dict], context: str) -> str:
-    lesson = context.replace("_", " ")
+    setting = context.replace("_", " ").capitalize()
     if not flagged:
-        return f"During the {lesson}: no one appears to need a check."
+        return f"{setting}: no student pointed out."
     c = Counter(f["behaviour"].replace("_", " ") for f in flagged)
     detail = ", ".join(f"{n} {b}" for b, n in c.most_common())
     n = len(flagged)
-    return f"During the {lesson}: {n} student{'s' if n > 1 else ''} may need a check ({detail})."
+    return f"{setting}: {n} student{'s' if n > 1 else ''} pointed out ({detail})."
 
 
 def render(q: dict, flagged: list[dict], colour_of: dict[str, str]) -> Image.Image:

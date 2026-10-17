@@ -1,4 +1,4 @@
-"""The rule table: is a behaviour flagged, OK or unused in a lesson type?"""
+"""The flag table: is a behaviour flagged, OK or unused in a setting (lecture, exam, ...)?"""
 from __future__ import annotations
 
 import csv
