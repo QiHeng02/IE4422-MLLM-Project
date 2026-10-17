@@ -12,8 +12,8 @@
 Resumes automatically: questions already in --out are skipped.
 Writes {"qid", "raw", "seconds"} per line, for scripts/evaluate.py.
 
-NOTE: written against the transformers + qwen-vl-utils API for Qwen2.5-VL, but
-not yet run on the cluster. Run on ~20 questions first (--limit 20).
+Written for transformers 5.x (`dtype=` replaces the old `torch_dtype=`); first cluster run 17 Oct. Run on ~20
+questions first (--limit 20): it prints seconds per question, used to size the test runs.
 """
 from __future__ import annotations
 
@@ -86,7 +86,7 @@ def main() -> None:
         print("few-shot examples:", [s["qid"] for s in shots])
 
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        mc["name"], torch_dtype=torch.bfloat16, device_map="auto")
+        mc["name"], dtype=torch.bfloat16, device_map="auto")
     if args.adapter:
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, str(args.adapter))
@@ -94,6 +94,7 @@ def main() -> None:
     processor = AutoProcessor.from_pretrained(mc["name"])
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    secs: list[float] = []
     with open(args.out, "a", encoding="utf-8") as f:
         for i, q in enumerate(todo, 1):
             t0 = time.time()
@@ -105,10 +106,15 @@ def main() -> None:
             with torch.no_grad():
                 out = model.generate(**inputs, max_new_tokens=mc["max_new_tokens"], do_sample=False)
             raw = processor.batch_decode(out[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)[0]
-            f.write(json.dumps({"qid": q["qid"], "raw": raw, "seconds": round(time.time() - t0, 2)}) + "\n")
+            secs.append(time.time() - t0)
+            f.write(json.dumps({"qid": q["qid"], "raw": raw, "seconds": round(secs[-1], 2)}) + "\n")
             f.flush()
+            if i == 1:
+                print(f"first answer ({secs[-1]:.1f}s, includes warm-up): {raw[:300]}")
             if i % 25 == 0 or i == len(todo):
-                print(f"{i}/{len(todo)}  last {time.time() - t0:.1f}s")
+                print(f"{i}/{len(todo)}  last {secs[-1]:.1f}s")
+    if len(secs) > 1:
+        print(f"mean {sum(secs[1:]) / (len(secs) - 1):.2f} s per question (first one excluded: warm-up)")
 
 
 if __name__ == "__main__":
