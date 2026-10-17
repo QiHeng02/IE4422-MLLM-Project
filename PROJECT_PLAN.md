@@ -49,7 +49,7 @@ Each decision blocks a pipeline step (Section7). Settle D1, D2, D3 and D6
 | D3 | **Flag table**: for each behaviour in each setting, flag or OK (see [Section1b](#the-flag-table)) | It makes every answer key | Step 4 | D1, D2; Dr Lim confirms it |
 | D4 | **YOLO baseline**: train one YOLO on our training photos, or use the SCB authors' models | The authors' models are 3 separate models (one per SCB subset, older YOLO format with `exp/opt.yaml`). None covers the Roboflow classes, and our script loads one model. Their training photos may also be in our test set. **Recommendation: train our own.** | Step 5 (YOLO) | before 19 Oct |
 | D5 | **Third test dataset** (DIPSER): keep or drop? | SCB + Roboflow already give two datasets. DIPSER needs 100–200 photos labelled by hand. **Recommendation: optional.** | Week 2 labelling work | team |
-| D6 | **How to split Roboflow photos** | Roboflow exports can hold edited (augmented) copies of the same photo, and its file names probably do not match our video rule. Copies in both training and test would make test scores too high. | Step 3 (split) | Task 2a result |
+| D6 | **How to split Roboflow photos.** **Proposal (#24), code ready:** our own split by scene (file-name rules + picture fingerprint); the 2 huge scenes go to train only, every 5th photo kept | Task 2a found ~136 real scenes in 772 photos, and Roboflow's own split leaks | Step 3 (split) | team confirms |
 
 ---
 
@@ -196,10 +196,10 @@ How one question flows through the model:
 
 ### Sources
 
-| Dataset | Role | Behaviours it labels | Licence | Status (16 Oct) |
+| Dataset | Role | Behaviours it labels | Licence | Status (17 Oct) |
 |---|---|---|---|---|
 | **SCB, Hugging Face release** | lesson photos: train, val, test | discuss, TurnHead, BowHead, hand-raising, read, write | academic, non-commercial | ✅ downloaded and checked |
-| **Roboflow [exam_cheating](https://universe.roboflow.com/behavior-cheating/exam_cheating-keaor)** | exam photos: train, val, test | Use_phone, Look_around, Cheat_paper, Normal (~1,000 images) | CC BY 4.0 | ⏳ not checked (Task 2a) |
+| **Roboflow [exam_cheating](https://universe.roboflow.com/behavior-cheating/exam_cheating-keaor)** | exam photos: train, val, test | Use_phone, Look_around, Cheat_paper, Normal (v2: 772 photos, ~136 scenes) | CC BY 4.0 | ✅ checked 17 Oct (Task 2a). v2 has no augmentation; photos stretched to 640×640 |
 | **DIPSER** | third test set only (D5) | none of ours: attention/emotion labels | CC BY 4.0 | not started; would need 100–200 photos labelled by hand |
 
 SCB classes `talk`, `using the phone` and `using the computer` appear in the SCB paper but are not in the public release.
@@ -213,9 +213,10 @@ SCB classes `talk`, `using the phone` and `using the computer` appear in the SCB
 | Head down (`BowHead`) | SCB | 19/20 | attention |
 | Hand-raising | SCB | 19/20 | attention |
 | Reading / writing | SCB | not checked | both |
-| Using phone | Roboflow | not checked | invigilation |
-| Looking around | Roboflow | not checked | invigilation |
-| Reading notes (`Cheat_paper`) | Roboflow | not checked | invigilation |
+| Using phone | Roboflow | correct ⚠️ box is on the **phone**; most photos are **not exam scenes** | invigilation |
+| Looking around | Roboflow | 18/20 | invigilation |
+| Reading notes (`Cheat_paper`) | Roboflow | 18/20 | invigilation |
+| Normal (not flagged) | Roboflow | 20/20; **every student in a Roboflow photo is boxed** | gives "do not flag" examples; makes RQ3 false flags measurable |
 
 Box counts in the SCB release: discuss 5,392 · TurnHead 11,156 · BowHead 4,962 · hand-raising 13,453 · read 24,078 · write 9,841.
 
@@ -228,7 +229,10 @@ Box counts in the SCB release: discuss 5,392 · TurnHead 11,156 · BowHead 4,962
 | Every Discuss photo contains discussion: no "no one talking" examples | Open: accept as a limitation, or check ~50 other SCB photos by hand and use them as "no one" examples |
 | TurnHead labels ~80% correct | Keep; state as a limitation |
 | Frames from one video look almost the same; one video appears in several SCB subsets | Split by video **across subsets** (`split.group_regex`); `--check-leakage` finds near-copies |
-| Roboflow exports may hold edited copies of one photo; its file names do not match our video rule | D6. Task 2a checks it. |
+| Roboflow: 772 photos are only ~136 scenes (copies, a 252-photo burst session, video frames); its own split leaks | Split by scene (#24, D6). Huge scenes → train only, thinned. Test = ~60 Roboflow photos from ~20 scenes: report exam per-behaviour scores as indicative |
+| Roboflow: most Use_phone photos are not exam scenes | Keep them for training; score RQ3 only on scenes tagged `exam = yes` (#25, `scripts/scene_sheet.py`) |
+| Roboflow: Use_phone boxes the phone, not the student | `box_recall` leaves out using_phone (#26) |
+| Roboflow photos stretched to 640×640; mixed web and phone sources | State as a limitation |
 | Two photo styles (classroom vs exam hall) | This is exactly what RQ2 tests: does the model use the text or the photo style? |
 | SCB includes school-age students and Chinese classrooms | State as a limitation |
 
@@ -265,7 +269,7 @@ Every script reads `configs/default.yaml`. Change settings there, never in code.
 - **You do:** run `python scripts/inspect_scb.py --root data/raw/scb`, then `scripts/preview_class.py` for each class (20 photos with the boxes drawn).
 - **Why:** to know which classes exist, how many boxes they have, and whether the boxes are right.
 - **Makes:** `results/data_check/scb_inspect.md` (counts and sample file names) and preview photos.
-- **Done when:** for each dataset you have counts and a "right out of 20" score per class. **SCB: done. Roboflow: Task 2a.**
+- **Done when:** for each dataset you have counts and a "right out of 20" score per class. **SCB: done. Roboflow: done (17 Oct).**
 
 #### Step 1. Filter
 - **You do:** set `scb_class_map` in `default.yaml` (dataset class name → our behaviour name), then run `python scripts/filter_scb.py`.
@@ -284,9 +288,9 @@ Every script reads `configs/default.yaml`. Change settings there, never in code.
 
 #### Step 3. Split the photos
 - **You do:** `python scripts/split_data.py --check-leakage`
-- **Why:** puts whole videos into train (70%), val (15%) or test (15%). Frames of one video look almost the same, so they must stay in one pile, or the test score will be too high.
+- **Why:** puts whole videos (SCB) or whole scenes (Roboflow, #24) into train (70%), val (15%) or test (15%). Frames of one video look almost the same, so they must stay in one pile, or the test score will be too high. The script prints the scene groups and the pile sizes per dataset.
 - **Makes:** `data/processed/splits.json` and `data/processed/leakage_report.json` (test photos that look almost the same as a training photo).
-- **Waits for:** step 1; D6 for Roboflow photos.
+- **Waits for:** step 1. (D6 is built in: `scene_subsets` in `default.yaml`.)
 - **Done when:** you have looked at the leakage report and each dataset reaches all three piles.
 
 #### Step 4. Make the question files
@@ -351,9 +355,9 @@ Every script reads `configs/default.yaml`. Change settings there, never in code.
 | `flag_f1` (main) | Per question: did it name the right behaviours to flag? F1 over (question, behaviour) pairs | all RQs | ✅ |
 | `ctx_<setting>_f1` | `flag_f1` for one setting (in `results/metrics/*.json`, not in `summary.csv`) | RQ1 | ✅ |
 | `flip_acc` | Same photo, all settings: share of photos where every answer is right | RQ2 | ✅ |
-| `box_recall` (secondary) | Flagged students found at IoU ≥ 0.5 | localisation, reported but not headline | ✅ |
+| `box_recall` (secondary) | Flagged students found at IoU ≥ 0.5 | localisation, reported but not headline | ✅ (leave out using_phone: ❌ to add, #26) |
 | `valid_json` | Share of answers that parse | invalid answers count as "no one flagged" | ✅ |
-| **Precision per setting and per dataset** | Share of flags that are correct, e.g. on Roboflow photos with exam text | RQ3 (false flags) | ❌ to add |
+| **Precision per setting and per dataset** | Share of flags that are correct, e.g. on Roboflow photos with exam text. For RQ3: only scenes tagged `exam = yes` (#25) | RQ3 (false flags) | ❌ to add |
 | **Switch rate** | On photos whose correct answer changes between settings: share where the model's answer also changes | RQ2 (clearer than `flip_acc`, which also drops when a box is missed) | ❌ to add |
 | `unseen_f1`, `wording_para<n>_f1` | Held-out setting; reworded setting text | optional tests | ✅ |
 
@@ -398,9 +402,11 @@ Put owner initials in the brackets. Tick the boxes when done and commit. **Submi
 
 ### Sat 17 Oct
 
-- [ ] **Task 2a: check Roboflow exam_cheating** [ ]. *Needs: nothing.*
+- [x] **Task 2a: check Roboflow exam_cheating** [Mambo]. *Needs: nothing.* **Done 17 Oct: passes with limits** (`decisions.md` #20, #24–#26).
   Download it in YOLOv8 format, from a version **without augmentation** if there is one (`data/README.md`), then run step 0 on it. Record: box counts, "right out of 20" for Use_phone, Look_around and Cheat_paper, whether photos are wide exam halls or close-ups, and whether the export holds edited copies of the same photo (D6).
   *Done when:* the results are posted to the group.
+- [ ] **Tag Roboflow scenes** [ ]. *Needs: Task 2a.* `python scripts/scene_sheet.py`, open the pictures in `results/data_check/scenes/`, write `yes` / `no` in the `exam` column of `configs/scene_tags.csv` (~136 rows, ~30 min). Commit the CSV.
+  *Why:* RQ3 is scored only on real exam scenes (#25). *Done when:* every row has `yes` or `no`.
 - [ ] **Team meeting** [everyone]. *Needs: Task 2a results.*
   Confirm approach A (#22). Decide D1, D2, D3 (draft) and D6. Ideally D4 and D5 too. Check the D3 draft against the RQ2 constraint (Section1b).
   *Done when:* each decision is a row in `docs/decisions.md`.
@@ -492,8 +498,8 @@ Put owner initials in the brackets. Tick the boxes when done and commit. **Submi
 
 | Risk | Sign | Fallback |
 |---|---|---|
-| Roboflow labels poor, or close-ups only | Task 2a | Look for another exam dataset; else invigilation uses SCB behaviours only and phone moves to future work |
-| Roboflow edited copies leak into test | Task 2a / leakage report | Use a version without augmentation; or keep Roboflow's own train/valid/test split (D6). The second needs a small change in `split_data.py`: it records that split (`orig_split`) but does not use it yet. |
+| Roboflow labels poor, or close-ups only | Task 2a: **passed 17 Oct** | Look for another exam dataset; else invigilation uses SCB behaviours only and phone moves to future work |
+| Roboflow copies or scenes leak into test | leakage report after step 3 | Scene split is in place (#24). If the report still shows Roboflow near-copies across piles, `scene_hamming_threshold` is too low: raise it to 7 and re-split |
 | RQ2 cannot be tested | No row of the D3 table changes between settings for one dataset | Change the settings (D2), e.g. use group discussion as the lesson setting |
 | Too few boxes for a behaviour | filter WARNING, or < ~100 boxes | Drop or merge it; log the decision |
 | `group_regex` cannot find source videos | split prints "almost one group per image" | Rely on `--check-leakage`; group near-copies by hand |

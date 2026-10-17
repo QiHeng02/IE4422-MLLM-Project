@@ -31,13 +31,20 @@ The scripts search below the folder that holds each `.yaml`, so nested `images/`
 We use 3 subsets: `SCB5-Discuss-2024-9-17`, `SCB_BowTurnHead_20250509`, `SCB5-Handrise-Read-write-2024-9-17`.
 Download each with its own `hf download` command; several `--include` patterns in one command do not work as expected.
 
-## Roboflow exam_cheating (exam photos; being checked, Task 2a)
+## Roboflow exam_cheating (exam photos; checked 17 Oct)
 
-- https://universe.roboflow.com/behavior-cheating/exam_cheating-keaor · CC BY 4.0 · ~1,000 images
-- Classes: Use_phone, Look_around, Cheat_paper, Normal
-- Download with a free Roboflow account in **YOLOv8** format into `data/raw/scb/exam_cheating/`.
-  Choose a dataset version **without augmentation** if there is one: augmented copies of one photo must not end up in both training and test (PROJECT_PLAN D6).
-- Check that the export's `data.yaml` lists `names`. Then run `inspect_scb.py` and `preview_class.py` on it, as for SCB.
+- https://universe.roboflow.com/behavior-cheating/exam_cheating-keaor · CC BY 4.0
+- We use **version 2**: 772 photos, no augmentation, stretched to 640×640. Classes: Use_phone, Look_around, Cheat_paper, Normal.
+- **Download in the browser, not on the cluster.** Roboflow's download link returns a Cloudflare "Just a moment..." page (5.4 KB) to the cluster. Sign in, open version 2, *Download Dataset* → **YOLOv8** → *Download zip to computer*. Then, from PowerShell in your Downloads folder:
+
+  ```powershell
+  scp .\exam_cheating.v2i.yolov8.zip <user>@<cluster>:/projects/IE4422/data/scb/exam_cheating/roboflow.zip
+  ```
+
+  On the cluster: `cd /projects/IE4422/data/scb/exam_cheating && unzip -q roboflow.zip && rm roboflow.zip`.
+  It lands under `data/scb/`, so the repo link `data/raw/scb` already includes it.
+- **Do not use Roboflow's train/valid/test folders as our split**: they leak (the same scene sits in several). `split_data.py` splits these photos by scene (`split.scene_subsets`, decision #24).
+- `python scripts/scene_sheet.py` makes one picture per scene and `configs/scene_tags.csv` to tag exam scenes (#25).
 
 ## DIPSER
 

@@ -44,6 +44,31 @@ def make_subset(root: Path, name: str, classes: list[str], n_videos: int, frames
             (lbl_dir / f"{stem}.txt").write_text("\n".join(lines))
 
 
+def make_roboflow(root: Path, n_scenes: int, burst: int, seed: int):
+    """Fake Roboflow export: train/valid/test folders that LEAK (copies of one scene in several),
+    hand-made copies, and one big burst session."""
+    import numpy as np
+    rng = np.random.default_rng(seed)
+    (root / "exam_cheating").mkdir(parents=True)
+    (root / "exam_cheating" / "data.yaml").write_text(
+        yaml.safe_dump({"names": ["Cheat_paper", "Look_around", "Normal", "Use_phone"], "nc": 4}))
+    items = []
+    for s in range(n_scenes):
+        base = rng.integers(0, 255, (48, 64, 3), dtype=np.uint8)
+        items += [(f"{100 + s}_jpg.rf.a{s}", base), (f"{100 + s}-Copy_jpg.rf.b{s}", base)]
+    sess = rng.integers(0, 255, (48, 64, 3), dtype=np.uint8)
+    items += [(f"IMG20220406110{k:03d}_BURST{k % 20:03d}_jpg.rf.c{k}", sess) for k in range(burst)]
+    folders = ["train", "valid", "test"]
+    for k, (stem, arr) in enumerate(items):
+        f = folders[k % 3]  # copies of one scene land in different folders, like the real export
+        (root / "exam_cheating" / f / "images").mkdir(parents=True, exist_ok=True)
+        (root / "exam_cheating" / f / "labels").mkdir(parents=True, exist_ok=True)
+        Image.fromarray(arr).resize((640, 640)).save(root / "exam_cheating" / f / "images" / f"{stem}.jpg")
+        (root / "exam_cheating" / f / "labels" / f"{stem}.txt").write_text(
+            f"{k % 4} 0.5 0.5 0.1 0.2\n2 0.2 0.3 0.1 0.2\n")
+    return len(items)
+
+
 def run(*args):
     r = subprocess.run([PY, *map(str, args)], cwd=REPO, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
@@ -54,12 +79,14 @@ def test_end_to_end(tmp_path):
     raw = tmp_path / "scb"
     make_subset(raw, "SCB5-Discuss", ["discuss"], n_videos=6, frames=5, seed=1)
     make_subset(raw, "SCB_BowTurnHead", ["BowHead", "TurnHead"], n_videos=6, frames=5, seed=2)
+    n_rf = make_roboflow(raw, n_scenes=20, burst=70, seed=3)
 
     cfg = yaml.safe_load((REPO / "configs/default.yaml").read_text())
     cfg["paths"] = {k: str(tmp_path / v) for k, v in cfg["paths"].items()}
     cfg["paths"]["scb_root"] = str(raw)
     cfg["rules_csv"] = str(REPO / "configs/rules.csv")
     cfg["split"]["group_regex"] = r"(?P<src>video\d+)"
+    cfg["scb_class_map"]["Look_around"] = "turning_head"
     cfg_path = tmp_path / "cfg.yaml"
     cfg_path.write_text(yaml.safe_dump(cfg))
 
@@ -69,7 +96,7 @@ def test_end_to_end(tmp_path):
 
     run("scripts/filter_scb.py", "--config", cfg_path)
     rows = [json.loads(l) for l in open(cfg["paths"]["manifest"])]
-    assert len(rows) == 60
+    assert len(rows) == 60 + n_rf
     assert all(b["behaviour"] in {"talking", "turning_head"} for r in rows for b in r["boxes"])
     assert any(not r["boxes"] for r in rows)
 
@@ -78,8 +105,25 @@ def test_end_to_end(tmp_path):
     # no source video in two splits, even across subsets (same video names in both)
     seen = {}
     for img, s in split.items():
-        key = Path(img).stem.split("_")[-2]
-        assert seen.setdefault(key, s) == s
+        if "video" in img:
+            key = Path(img).stem.split("_")[-2]
+            assert seen.setdefault(key, s) == s
+    # Roboflow: a scene and its hand-made copy stay together; the burst session is train only, thinned
+    from ie4422.scenes import scene_name_key
+    scene_split = {}
+    for img, s in split.items():
+        if "exam_cheating" in img:
+            assert scene_split.setdefault(scene_name_key(Path(img).name), s) == s, img
+    assert scene_split["burst:20220406"] == "train"
+    assert sum("BURST" in img for img in split) == 14          # 70 photos, keep every 5th
+    assert {s for img, s in split.items() if "exam_cheating" in img} == {"train", "val", "test"}
+
+    run("scripts/scene_sheet.py", "--config", cfg_path, "--out", tmp_path / "scenes",
+        "--csv", tmp_path / "scene_tags.csv")
+    import csv
+    tags = list(csv.DictReader(open(tmp_path / "scene_tags.csv")))
+    assert len(tags) == 21 and tags[0]["scene"] == "burst:20220406" and tags[0]["n_photos"] == "70"
+    assert len(list((tmp_path / "scenes").glob("*.jpg"))) == 21
 
     run("scripts/build_questions.py", "--config", cfg_path)
     qdir = Path(cfg["paths"]["questions_dir"])
@@ -91,8 +135,8 @@ def test_end_to_end(tmp_path):
     # a discuss-only image must ignore turning_head (not labelled in that subset)
     q = next(q for q in train_c + val + test if "Discuss" in q["image"])
     assert "turning_head" in q["ignore"]
-    assert {Path(q["image"]).parts[-4] for q in test} == {"SCB5-Discuss", "SCB_BowTurnHead"}, \
-        "both subsets should reach the test split"
+    assert {Path(q["image"]).parts[-4] for q in test} == {"SCB5-Discuss", "SCB_BowTurnHead", "exam_cheating"}, \
+        "every subset should reach the test split"
 
     # perfect predictor
     perfect = tmp_path / "perfect.jsonl"

@@ -22,16 +22,17 @@ rules_csv: configs/rules.csv
 # Map dataset class names (exactly as in each dataset's yaml) -> our behaviour names.
 # Classes available (checked 16 Oct):
 #   SCB (HF): discuss, TurnHead, BowHead, hand-raising, read, write
-#   Roboflow exam_cheating (being checked): Use_phone, Look_around, Cheat_paper, Normal
+#   Roboflow exam_cheating v2 (checked 17 Oct, passes): Use_phone, Look_around, Cheat_paper, Normal
+#     Every student is boxed (Normal = not cheating). Use_phone boxes the PHONE, not the student.
 # Final list = PROJECT_PLAN.md decision D1. Every behaviour in rules.csv must appear here.
 scb_class_map:
   discuss: talking
   TurnHead: turning_head
   # BowHead: head_down          # if chosen (D1)
   # hand-raising: hand_raising  # if chosen (D1)
-  # Use_phone: using_phone      # Roboflow, if Task 2a passes
-  # Look_around: turning_head   # Roboflow, if Task 2a passes
-  # Cheat_paper: reading_notes  # Roboflow, if Task 2a passes
+  # Use_phone: using_phone      # Roboflow (Task 2a passed), if chosen in D1
+  # Look_around: turning_head   # Roboflow (Task 2a passed), if chosen in D1
+  # Cheat_paper: reading_notes  # Roboflow (Task 2a passed), if chosen in D1
 
 # ---------------------------------------------------------------------------
 # Settings ("contexts" in the code)
@@ -75,7 +76,15 @@ split:
   # SCB names seen (16 Oct): 0081_001790.jpg -> video 0081 (before "_");
   # 0001052.jpg / 06000022.jpg (no "_") -> first 4 digits assumed = video. The second
   # case is a GUESS: check split_data.py --check-leakage output by eye.
-  group_regex: '^(?P<src>\d+(?=_)|\d{4})'
+  group_regex: '^(?P<src>\d+(?=_)|\d{4})'     # SCB subsets only
+
+  # Subsets split by SCENE instead (file-name rules + picture fingerprint, src/ie4422/scenes.py).
+  # Roboflow (checked 17 Oct): 772 photos, ~136 scenes; its own split leaks. PROJECT_PLAN D6.
+  scene_subsets: [exam_cheating]
+  scene_hamming_threshold: 5        # fingerprints this close = same scene. 10 merged different rooms
+  big_scene:                        # a scene with this many photos goes to train only, thinned
+    min_size: 60                    # Roboflow: burst session (252) and one video (~110)
+    keep_every: 5
 
   leakage_hamming_threshold: 5      # dHash distance counted as a near-duplicate
 

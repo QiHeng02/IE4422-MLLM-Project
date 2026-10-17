@@ -12,6 +12,8 @@ outputs/
 results/predictions/
 results/figures/
 results/data_check/*.json
+# preview and scene pictures are dataset images: never commit
+results/data_check/*/
 
 # Python
 __pycache__/

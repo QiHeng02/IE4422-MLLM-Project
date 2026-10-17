@@ -30,3 +30,31 @@ def test_parse_answer_variants():
     assert parse_answer('{"flagged": "oops"}', B) is None
     dropped = parse_answer('{"flagged": [{"bbox_2d": [1,2,3,4], "behaviour": "sleeping"}]}', B)
     assert dropped["flagged"] == []
+
+
+def test_scene_name_key_roboflow_names():
+    from ie4422.scenes import scene_name_key
+    assert scene_name_key("50-Copy_jpg.rf.2190cc.jpg") == scene_name_key("50_jpg.rf.aa11.jpg") == "name:50"
+    assert scene_name_key("78-Copy-2-_jpg.rf.7d4c.jpg") == "name:78"
+    assert scene_name_key("14_JPG_jpg.rf.6bd7.jpg") == "name:14"
+    assert scene_name_key("IMG20220406110245_BURST016_jpg.rf.fc20.jpg") == "burst:20220406"
+    assert scene_name_key("IMG_4719_MOV-0218-Copy_jpg.rf.x.jpg") == "video:IMG_4719"
+    assert scene_name_key("Ujian_-nilai-A__mp4-75_jpg.rf.x.jpg") == "video:Ujian_-nilai-A_"
+
+
+def test_scene_groups_names_and_fingerprints(tmp_path):
+    import numpy as np
+    from PIL import Image
+    from ie4422.scenes import scene_groups
+    rng = np.random.default_rng(0)
+    a, b = rng.integers(0, 255, (64, 64, 3), dtype=np.uint8), rng.integers(0, 255, (64, 64, 3), dtype=np.uint8)
+    paths = {}
+    for name, arr in [("1_jpg.rf.x.jpg", a), ("1-Copy_jpg.rf.y.jpg", b),   # same name key
+                      ("2_jpg.rf.z.jpg", a),                              # same picture as 1
+                      ("3_jpg.rf.w.jpg", b[::-1])]:                       # different
+        paths[name] = str(tmp_path / name)
+        Image.fromarray(arr).save(paths[name])
+    g = scene_groups(sorted(paths.values()), threshold=5)
+    one = g[paths["1_jpg.rf.x.jpg"]]
+    assert g[paths["1-Copy_jpg.rf.y.jpg"]] == g[paths["2_jpg.rf.z.jpg"]] == one == "name:1"
+    assert g[paths["3_jpg.rf.w.jpg"]] != one
