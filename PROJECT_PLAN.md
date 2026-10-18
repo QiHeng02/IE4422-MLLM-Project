@@ -392,6 +392,23 @@ Every script reads `configs/default.yaml`. Change settings there, never in code.
 | Qwen + LoRA (run A) | | | | |
 | *Qwen + LoRA (run B, if trained)* | | | | |
 
+### Validation results so far (val, 642 questions; NOT the final numbers)
+
+Final wording v3 (decisions #37, #38). F1 = behaviour-level, trained settings. RQ3 = 58 exam-tagged Roboflow photos, closed-book exam setting (small: ±4 photos ≈ ±7 points).
+
+| Method (v3 wording) | F1 lecture | F1 exam | Main F1 (`known_f1`) | Switch rate (false switch) | RQ3 precision / false-flag rate | Valid JSON |
+|---|---|---|---|---|---|---|
+| Qwen zero-shot | 0.05 | 0.14 | 0.09 | 0.70 (0.25) | 0.45 / 38% | |
+| Qwen few-shot (2) | | | 0.06 | 0.10 | 1.00 / 0% (barely flags) | |
+| Qwen zero-shot + rules in prompt | 0.37 | 0.30 | 0.32 | 0.43 (0.08) | 0.38 / 38% | |
+| **Qwen + LoRA run A** (420 steps, 1024-token limit) | **0.77** | **0.76** | **0.76** | **0.90 (0.07)** | 0.57 / 40% | 98.4% |
+| *LoRA run A, v2 wording (512-token limit)* | 0.72 | 0.74 | 0.74 | 0.88 (0.10) | 0.62 / 33% | 96.7% |
+
+- **RQ1 (val):** LoRA 0.76 vs best prompting 0.32 (same wording). **RQ2 (val):** LoRA switches correctly 90% of the time, false switch 7%: run B not needed (#22 rule).
+- **Prompt sensitivity (val, `known_f1`):** zero-shot v1 0.31 → v2 0.13 → v3 0.09; rules-in-prompt v2 0.38 → v3 0.32. Prompting swings with wording; LoRA does not need the wording to be right.
+- **LoRA weak spots (val):** reading notes 2/18 found; turning head in exams 24 false flags; 40% of exam photos get ≥ 1 false flag; box recall 0.22; 9/642 answers hit the 1024-token limit (repeating boxes).
+- v2 → v3 LoRA differs in wording AND token limit (#39): not a clean comparison, and not needed (wording frozen).
+
 ---
 
 ## 9. Lecture topics applied
