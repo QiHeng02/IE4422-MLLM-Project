@@ -14,6 +14,8 @@ from pathlib import Path
 import yaml
 from PIL import Image
 
+from ie4422.rules import load_rules
+
 REPO = Path(__file__).resolve().parents[1]
 PY = sys.executable
 
@@ -213,6 +215,48 @@ def test_end_to_end(tmp_path):
     run("scripts/export_llamafactory.py", "--config", cfg_path)
     info = json.loads((qdir.parent / "llamafactory/dataset_info.json").read_text())
     assert set(info) == {"classroom_train_single", "classroom_train_contrastive", "classroom_val"}
+
+    # YOLO baseline data: same train/val photos as the language model, our 5 behaviours as classes
+    yolo = tmp_path / "yolo"
+    out = run("scripts/export_yolo.py", "--config", cfg_path, "--out", yolo)
+    dy = yaml.safe_load((yolo / "data.yaml").read_text())
+    assert list(dy["names"].values()) == list(load_rules(Path(cfg["rules_csv"])).behaviours)
+    for split, qfile in (("train", "train_single.jsonl"), ("val", "val.jsonl")):
+        imgs = {json.loads(l)["image"] for l in (qdir / qfile).read_text().splitlines()}
+        assert len(list((yolo / "images" / split).iterdir())) == len(imgs), out
+        assert len(list((yolo / "labels" / split).glob("*.txt"))) == len(imgs)
+    lines = [l.split() for f in (yolo / "labels/train").glob("*.txt") for l in f.read_text().splitlines()]
+    assert lines and all(len(l) == 5 and 0 <= int(l[0]) < 5 for l in lines)
+    assert all(0 <= float(v) <= 1 for l in lines for v in l[1:])
+    assert not (yolo / "images/test").exists()     # test photos never exported
+
+    # YOLO + flag table: a stub detector that "sees" every behaviour in every photo. The output must
+    # keep only behaviours flagged in the setting AND listed in the question, and score with evaluate.py.
+    stub = tmp_path / "stub" / "ultralytics"
+    stub.mkdir(parents=True)
+    names = dict(enumerate(load_rules(Path(cfg["rules_csv"])).behaviours))
+    stub.joinpath("__init__.py").write_text(
+        "class _L(list):\n    def tolist(self): return list(self)\n"
+        "class _B:\n    def __init__(self, n):\n"
+        "        self.xyxy = _L([[0, 0, 10, 10]] * n); self.cls = _L(range(n))\n"
+        "class _R:\n    def __init__(self, n): self.boxes = _B(n)\n"
+        f"class YOLO:\n    names = {names!r}\n"
+        "    def __init__(self, w): pass\n"
+        "    def predict(self, *a, **k): return [_R(len(self.names))]\n")
+    yolo_pred = tmp_path / "yolo_test.jsonl"
+    env = {**__import__("os").environ, "PYTHONPATH": f"{stub.parent}"}
+    r = subprocess.run([PY, "scripts/yolo_rules_baseline.py", "--config", cfg_path, "--weights", "x.pt",
+                        "--questions", qdir / "test.jsonl", "--out", yolo_pred],
+                       cwd=REPO, capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    rules = load_rules(Path(cfg["rules_csv"]))
+    qs = {json.loads(l)["qid"]: json.loads(l) for l in (qdir / "test.jsonl").read_text().splitlines()}
+    for l in yolo_pred.read_text().splitlines():
+        row = json.loads(l)
+        q, got = qs[row["qid"]], {f["behaviour"] for f in json.loads(row["raw"])["flagged"]}
+        assert got == rules.flagged(q["context"]) & set(q["behaviours"]), (q["qid"], got)
+    run("scripts/evaluate.py", "--config", cfg_path, "--method", "yolo_stub",
+        "--questions", qdir / "test.jsonl", "--predictions", yolo_pred)
 
     run("scripts/visualize.py", "--config", cfg_path, "--questions", qdir / "test.jsonl",
         "--predictions", perfect, "--n", 3)

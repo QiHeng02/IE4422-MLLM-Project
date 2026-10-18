@@ -253,7 +253,7 @@ All methods answer the **same test questions** and the **same script** scores th
 
 | Method | Reads the setting text? | Why it is here | How to run |
 |---|---|---|---|
-| **YOLO + flag table** | No; the table is code | The usual approach (late fusion). Answers "why not a detector + if-statement?" Reference for RQ3. | `yolo_rules_baseline.py` (one YOLO model; D4) |
+| **YOLO + flag table** | No; the table is code | The usual approach (late fusion). Answers "why not a detector + if-statement?" Reference for RQ3. | `export_yolo.py` + `yolo_rules_baseline.py` (one YOLOv8s on our train photos; D4, #40). Step by step: [docs/yolo_track.md](docs/yolo_track.md) |
 | **Qwen zero-shot** | Yes | Starting point for RQ1, and the "before" for RQ2 | `run_vlm.py` |
 | **Qwen few-shot** (2 examples) | Yes | Best result without training from examples (RQ1) | `run_vlm.py --few-shot 2` |
 | **Qwen zero-shot + rules in prompt** | Yes, plus the flag-table row for its setting | Fair RQ1: does training beat simply **telling** the model the rules? (#35). Its participation score is not "unseen" (the rules are stated): report it separately | `run_vlm.py --rules-in-prompt` |
@@ -446,23 +446,23 @@ Put owner initials in the brackets. Tick the boxes when done and commit. **Submi
 - [x] **Update the config**: done 17 Oct (class map, `rules.csv`, settings, neutral question).
 - [ ] **Stakeholder email** [ ]. *Needs: the D3 draft.* Put the new flag table in the email; send it to Dr Lim.
   *Done when:* sent; the date is in `docs/stakeholder_notes.md`.
-- [ ] **Steps 1–4** [Mambo]. *Needs: the config update (done).*
-- [ ] **20-question GPU test** [ ]. *Needs: GPU env and `val.jsonl`.* `run_vlm.py --limit 20`; read the answers. **Write down seconds per question**: it sets the real cost of every test run.
-- [ ] **Training time check** [ ]. *Needs: GPU env.* Run LoRA run A for ~50 steps and time it. Use the speed to set `split.video_cap` (#31), then redo steps 3–4 before any baseline.
+- [x] **Steps 1–4** [Mambo]. **Done 18 Oct** (with caps #31, #33). *Needs: the config update (done).*
+- [x] **20-question GPU test** [Mambo]. **Done 18 Oct** (#34). *Needs: GPU env and `val.jsonl`.* `run_vlm.py --limit 20`; read the answers. **Write down seconds per question**: it sets the real cost of every test run.
+- [x] **Training time check** [Mambo]. **Done 18 Oct** (#34). *Needs: GPU env.* Run LoRA run A for ~50 steps and time it. Use the speed to set `split.video_cap` (#31), then redo steps 3–4 before any baseline.
 
 ### Mon 19 – Thu 22 Oct
 
-- [ ] Zero-shot and few-shot on val; score them (step 5) [ ].
+- [x] Zero-shot, few-shot and rules-in-prompt on val; scored (step 5) [Mambo]. **Done 18 Oct**, 3 wordings (#35–#38).
 - [ ] YOLO: train one model on our training photos (if D4 agrees); YOLO + table on val [ ].
-- [ ] Add precision per setting/dataset and switch rate to `evaluate.py`, with a test (Section8) [ ].
+- [x] Add precision per setting/dataset and switch rate to `evaluate.py`, with a test (Section8). **Done 18 Oct**.
 - [ ] Dr Lim's reply → freeze the flag table. If it changes: redo step 4 and re-run the baselines [ ].
 - [ ] Cited figures for the problem statement (lecture size; invigilator-to-candidate ratio) [ ].
 
 ### Week 2 (23–29 Oct): training and final test
 
 **Milestone:** every method scored on test; stakeholder round 2 done.
-- [ ] LoRA run A; choose the checkpoint on val (step 6) [ ].
-- [ ] Text-switch check on val → run B decision (Section6); train run B only if needed [ ].
+- [ ] LoRA run A; choose the checkpoint on val (step 6) [Mambo]. **Run A trained 18 Oct (v3, val known F1 0.76); checkpoint choice (200/400/420) left.**
+- [x] Text-switch check on val → run B decision (Section6). **18 Oct: switch rate 0.90, false switch 0.07 → run B not needed.**
 - [ ] Final test for every method (step 7) [ ].
 - [ ] `visualize.py` examples; stakeholder round 2 (step 8) [ ].
 
