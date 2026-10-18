@@ -89,6 +89,7 @@ def main() -> None:
     ap.add_argument("--shots-from", type=Path, help="train questions for few-shot (default: train_single.jsonl)")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--max-new-tokens", type=int, help="answer length limit (default: model.max_new_tokens in the config)")
     ap.add_argument("--rules-in-prompt", action="store_true",
                     help="state the flag-table row for the question's setting in the prompt (baseline)")
     args = ap.parse_args()
@@ -99,6 +100,7 @@ def main() -> None:
 
     cfg = load_config(args.config)
     mc = cfg["model"]
+    max_new = args.max_new_tokens or mc["max_new_tokens"]
     questions = list(read_jsonl(args.questions))[: args.limit]
     done = {r["qid"] for r in read_jsonl(args.out)} if args.out.exists() else set()
     todo = [q for q in questions if q["qid"] not in done]
@@ -126,8 +128,11 @@ def main() -> None:
     processor.tokenizer.padding_side = "left"   # batched generation needs left padding
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    stop = processor.tokenizer.convert_tokens_to_ids(["<|im_end|>", "<|endoftext|>"])
+    stop = {t for t in stop + [processor.tokenizer.eos_token_id, processor.tokenizer.pad_token_id] if t is not None}
+    print(f"max_new_tokens = {max_new}")
     secs: list[float] = []
-    n_done = 0
+    n_done = n_cut = 0
     with open(args.out, "a", encoding="utf-8") as f:
         for start in range(0, len(todo), args.batch_size):
             batch = todo[start:start + args.batch_size]
@@ -138,11 +143,16 @@ def main() -> None:
             inputs = processor(text=texts, images=images, videos=videos, padding=True,
                                return_tensors="pt").to(model.device)
             with torch.no_grad():
-                out = model.generate(**inputs, max_new_tokens=mc["max_new_tokens"], do_sample=False)
-            raws = processor.batch_decode(out[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)
+                out = model.generate(**inputs, max_new_tokens=max_new, do_sample=False)
+            gen = out[:, inputs.input_ids.shape[1]:]
+            raws = processor.batch_decode(gen, skip_special_tokens=True)
+            # cut_off = the answer never ended: it hit the length limit (too long, or repeating itself)
+            cuts = [not any(int(t) in stop for t in row) for row in gen.tolist()]
+            n_cut += sum(cuts)
             per_q = (time.time() - t0) / len(batch)
-            for q, raw in zip(batch, raws):
-                f.write(json.dumps({"qid": q["qid"], "raw": raw, "seconds": round(per_q, 2)}) + "\n")
+            for q, raw, cut in zip(batch, raws, cuts):
+                f.write(json.dumps({"qid": q["qid"], "raw": raw, "seconds": round(per_q, 2),
+                                    "cut_off": cut, "max_new_tokens": max_new}) + "\n")
             f.flush()
             if start == 0:
                 print(f"first answer (batch includes warm-up): {raws[0][:300]}")
@@ -154,6 +164,7 @@ def main() -> None:
     if secs:
         print(f"mean {sum(secs) / len(secs):.2f} s per question (first batch excluded: warm-up; "
               f"batch size {args.batch_size})")
+    print(f"{n_cut}/{n_done} answers hit the {max_new}-token limit (cut_off: too long or repeating)")
 
 
 if __name__ == "__main__":

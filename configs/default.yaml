@@ -136,7 +136,9 @@ build:
 # ---------------------------------------------------------------------------
 model:
   name: Qwen/Qwen2.5-VL-3B-Instruct
-  max_new_tokens: 512
+  # 18 Oct (decisions #39): 512 cut off 21/642 LoRA val answers at ~15 boxes (each box ~34
+  # tokens; digits are single tokens). 1024 fits ~29 boxes; most in a val answer is 24.
+  max_new_tokens: 1024
   temperature: 0.0                  # greedy, so results are repeatable
 
 eval:
