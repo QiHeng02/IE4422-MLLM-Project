@@ -163,7 +163,7 @@ def test_end_to_end(tmp_path):
     train_c, train_s, val, test = load("train_contrastive"), load("train_single"), load("val"), load("test")
     assert len(train_c) == 2 * len(train_s)
     # each question lists only the behaviours labelled for its photo (decisions #30, #32)
-    assert all(q["behaviours"] == ["talking"] and "Look only for these behaviours: talking." in q["question"]
+    assert all(q["behaviours"] == ["talking"] and "Consider only these behaviours: talking." in q["question"]
                for q in train_c + val + test if q["subset"] == "SCB5-Discuss")
     assert all(q["behaviours"] == ["talking", "turning_head"]
                for q in train_c + val + test if q["subset"] == "SCB5-Discuss+SCB_BowTurnHead")

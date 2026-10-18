@@ -116,7 +116,7 @@ The model learns and is tested like a student: with **questions and answer keys*
 **What:** the sentence that tells the model where it is, e.g. "This is a lecture." Each setting is a column in the flag table.
 **Decision D2 (17 Oct):** lecture and closed-book exam are trained. Participation is held out.
 **Held-out setting:** a setting that we never use in training. Testing on it shows whether the model follows a setting it never saw. Expect LoRA to do worse than prompting here: in training, hand-raising is never pointed out.
-**Rule for the sentences:** name the situation, never the behaviours. The question is neutral ("Which students should be pointed out in this situation?") because participation points out good behaviour.
+**Rule for the sentences:** name the situation, never the behaviours. The question is neutral ("Consider only these behaviours: … Whether a behaviour should be pointed out depends on the situation. Which students should be pointed out in this situation, if any?", #36) because participation points out good behaviour, and so that the list is a scope, not a target.
 
 ### Behaviours
 **What:** the visible student actions the model looks for, e.g. using phone, turning head, talking.

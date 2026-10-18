@@ -67,7 +67,7 @@ def test_rules_in_prompt_text():
     from run_vlm import with_rules
     from ie4422.rules import load_rules
     rules = load_rules(Path(__file__).resolve().parents[1] / "configs/rules.csv")
-    q = {"question": "This is a lecture. Look only for these behaviours: using phone. Which students should be pointed out?",
+    q = {"question": "This is a lecture. Consider only these behaviours: using phone. Which students should be pointed out?",
          "behaviours": ["using_phone"], "context": "lecture"}
     assert "Rules for this situation: using phone: point out. Which students" in with_rules(q, rules)
     assert with_rules(q, None) == q["question"]

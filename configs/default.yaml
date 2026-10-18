@@ -67,9 +67,12 @@ heldout_contexts: [participation]
 
 # Neutral wording: the participation setting points out GOOD behaviour, so the question
 # must not say "does not fit" or "for review". The JSON key stays "flagged".
+# 18 Oct (decisions #36): "Consider" (not "Look for") so the list sets the scope, not the
+# target; one neutral sentence that the situation matters (it does not reveal the table).
 question: >-
-  {context} Look only for these behaviours: {behaviours}.
-  Which students should be pointed out in this situation?
+  {context} Consider only these behaviours: {behaviours}.
+  Whether a behaviour should be pointed out depends on the situation.
+  Which students should be pointed out in this situation, if any?
   Answer only with JSON in this format:
   {{"flagged": [{{"bbox_2d": [x1, y1, x2, y2], "behaviour": "<one of: {behaviours}>"}}],
   "reason": "<one sentence>"}}. Use {{"flagged": [], "reason": "..."}} if no one.
