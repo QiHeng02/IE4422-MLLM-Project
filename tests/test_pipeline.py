@@ -80,6 +80,7 @@ def test_end_to_end(tmp_path):
     raw = tmp_path / "scb"
     make_subset(raw, "SCB5-Discuss", ["discuss"], n_videos=6, frames=5, seed=1)
     make_subset(raw, "SCB_BowTurnHead", ["BowHead", "TurnHead"], n_videos=6, frames=5, seed=2)
+    make_subset(raw, "SCB5-Handrise", ["hand-raising", "read", "write"], n_videos=6, frames=5, seed=4)
     n_rf = make_roboflow(raw, n_scenes=20, burst=70, seed=3)
     # Shared frames, as in real SCB: 3 Discuss frames also sit in BowTurnHead (same name and
     # picture, TurnHead labels), plus 1 name clash with a DIFFERENT picture (must not merge).
@@ -100,6 +101,7 @@ def test_end_to_end(tmp_path):
     cfg["rules_csv"] = str(REPO / "configs/rules.csv")
     cfg["split"]["group_regex"] = r"(?P<src>video\d+)"
     cfg["split"]["video_cap"] = {"train": 2, "val": None, "test": None}
+    cfg["build"]["max_train_nothing_to_flag"] = 3      # hand-raising-only training photos
     cfg_path = tmp_path / "cfg.yaml"
     cfg_path.write_text(yaml.safe_dump(cfg))
 
@@ -112,12 +114,13 @@ def test_end_to_end(tmp_path):
 
     run("scripts/filter_scb.py", "--config", cfg_path)
     rows = [json.loads(l) for l in open(cfg["paths"]["manifest"])]
-    assert len(rows) == 60 + 4 + n_rf - 3          # 3 shared frames merged, the clash kept apart
+    assert len(rows) == 90 + 4 + n_rf - 3          # 3 shared frames merged, the clash kept apart
     merged = [r for r in rows if len(r["subsets"]) > 1]
     assert len(merged) == 3 and all(r["labelled"] == ["talking", "turning_head"] for r in merged)
     assert all(r["subset"] == "SCB5-Discuss+SCB_BowTurnHead" for r in merged)
     assert sum(Path(r["image"]).stem == clash for r in rows) == 2
-    assert {b["behaviour"] for r in rows for b in r["boxes"]} == {"talking", "turning_head", "using_phone", "reading_notes"}
+    assert {b["behaviour"] for r in rows for b in r["boxes"]} == \
+        {"talking", "turning_head", "hand_raising", "using_phone", "reading_notes"}
     assert any(not r["boxes"] for r in rows)
 
     out = run("scripts/split_data.py", "--config", cfg_path, "--check-leakage")
@@ -166,8 +169,13 @@ def test_end_to_end(tmp_path):
     # a discuss-only image must ignore turning_head (not labelled in that subset)
     q = next(q for q in train_c + val + test if q["subset"] == "SCB5-Discuss")
     assert "turning_head" in q["ignore"]
-    assert {Path(q["image"]).parts[-4] for q in test} == {"SCB5-Discuss", "SCB_BowTurnHead", "exam_cheating"}, \
-        "every subset should reach the test split"
+    assert {Path(q["image"]).parts[-4] for q in test} == \
+        {"SCB5-Discuss", "SCB_BowTurnHead", "SCB5-Handrise", "exam_cheating"}, "every subset should reach the test split"
+    # hand-raising-only photos: at most 3 in training (decisions #33), none removed from test
+    assert len({q["image"] for q in train_s if q["subset"] == "SCB5-Handrise"}) <= 3
+    hr_test = {q["image"] for q in test if q["subset"] == "SCB5-Handrise"}
+    assert hr_test == {i for i, s in split.items() if s == "test" and "SCB5-Handrise" in i
+                       and not any(r["image"] == i and len(r["subsets"]) > 1 for r in rows)}
 
     # perfect predictor
     perfect = tmp_path / "perfect.jsonl"

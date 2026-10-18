@@ -230,7 +230,7 @@ Box counts in the SCB release: discuss 5,392 · TurnHead 11,156 · BowHead 4,962
 | Problem | Handling |
 |---|---|
 | Each dataset or subset labels only its own classes | Frames shared by several SCB subsets are merged (union of labels, #32). Scoring ignores unlabelled behaviours, and **each question lists only the behaviours labelled for its photo (#30)**, so no training answer says "no one" about an unlabelled student |
-| A few videos dominate; hand-raising was 63% of training (answer always "no one" in lecture and exam) | Cap per source video, `split.video_cap` (#31); N set after the GPU timing test |
+| A few videos dominate; hand-raising was 57–63% of training (answer always "no one" in lecture and exam) | Cap per source video: train 20 / val 10 / test 30 (#31), and at most 500 hand-raising-only training photos (#33) |
 | Every Discuss photo shows talking, so with its list ("talking") the answer never varies | Its behaviour-level score is trivial: report results per subset; RQ2 evidence comes from BowTurnHead and Roboflow |
 | So talking is never scored on Roboflow photos, and phone is never scored on SCB photos | State it. RQ3 false flags cover only the behaviours Roboflow labels. |
 | Every Discuss photo contains discussion: no "no one talking" examples | Open: accept as a limitation, or check ~50 other SCB photos by hand and use them as "no one" examples |
@@ -419,9 +419,7 @@ Put owner initials in the brackets. Tick the boxes when done and commit. **Submi
 - [ ] **Team meeting** [everyone]. *Needs: Task 2a results.* **D1–D3 drafted by Mambo 17 Oct: the team confirms.**
   Confirm approach A (#22). Decide D1, D2, D3 (draft) and D6. Ideally D4 and D5 too. Check the D3 draft against the RQ2 constraint (Section1b).
   *Done when:* each decision is a row in `docs/decisions.md`.
-- [ ] **GPU environment** [ ]. *Needs: nothing; can start now.*
-  `pip install -r requirements-gpu.txt` in the `classroom` env on the A40.
-  *Done when:* Qwen2.5-VL-3B loads on the GPU.
+- [x] **GPU environment**: done 18 Oct. Two environments: `classroom` (data, inference, scoring, YOLO) and `/projects/IE4422/envs/lf` (LLaMA-Factory training only; it needs older transformers/peft). Timing in #34.
 
 ### Sun 18 Oct
 

@@ -7,5 +7,5 @@ accelerate>=0.30
 peft>=0.11
 bitsandbytes>=0.43        # only for the optional QLoRA run
 qwen-vl-utils>=0.0.8
-llamafactory              # LoRA training via llamafactory-cli
-ultralytics>=8.2          # YOLO baseline
+# llamafactory: install in a SEPARATE env (/projects/IE4422/envs/lf); it downgrades transformers/peft (decisions #34)
+ultralytics>=8.2          # YOLO baseline; on the cluster replace opencv-python with opencv-python-headless (no libGL)

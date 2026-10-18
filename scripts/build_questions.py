@@ -12,7 +12,12 @@ Writes to paths.questions_dir:
 Held-out rules (heldout_contexts) never appear in train or val.
 With `build.behaviour_list: labelled` (decisions #30), each question lists only the
 behaviours labelled for its photo (after merging shared frames, #32), so every answer key is
-complete for what it asks. Photo caps live in split_data.py (`split.video_cap`, #31).
+complete for what it asks. Photo caps per video live in split_data.py (`split.video_cap`, #31).
+
+`build.max_train_nothing_to_flag` (#33): at most N TRAINING photos whose listed behaviours
+are never `flag` in a trained setting (in practice: hand-raising-only photos). Their answer
+is always "no one" in training; too many teach the model to answer "no one" everywhere.
+Val and test keep them all (the participation test needs them).
 
 Each row:
   qid, image, split, context, wording, heldout, question,
@@ -91,12 +96,31 @@ def main() -> None:
     rng = random.Random(cfg["seed"])
 
     train_ctx, all_ctx = cfg["train_contexts"], list(ctx)
+    flaggable = set().union(*(rules.flagged(c) for c in train_ctx))
+
+    def listed(r: dict) -> set[str]:
+        if cfg["build"].get("behaviour_list", "all") == "labelled":
+            return set(r["labelled"]) & set(rules.behaviours)
+        return set(rules.behaviours)
+
+    # Cap TRAINING photos whose answer is "no one" in every trained setting by construction
+    cap = cfg["build"].get("max_train_nothing_to_flag")
+    drop: set[str] = set()
+    if cap is not None:
+        nothing = sorted(r["image"] for r in rows
+                         if split_of.get(r["image"]) == "train" and not (listed(r) & flaggable))
+        if len(nothing) > cap:
+            keep = set(random.Random(f"{cfg['seed']}|nothing_to_flag").sample(nothing, cap))
+            drop = set(nothing) - keep
+        print(f"training photos with nothing to flag in trained settings: {len(nothing)} -> "
+              f"{len(nothing) - len(drop)} (build.max_train_nothing_to_flag = {cap})")
+
     out: dict[str, list[dict]] = {k: [] for k in
                                   ("train_single", "train_contrastive", "val", "test", "test_reworded")}
 
     for r in rows:
         s = split_of.get(r["image"])
-        if s is None:
+        if s is None or r["image"] in drop:
             continue
         canon = lambda c: make_question(r, s, c, "canonical", ctx[c]["canonical"], rules, cfg)  # noqa: E731
         if s == "train":

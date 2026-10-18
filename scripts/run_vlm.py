@@ -10,6 +10,9 @@
     python scripts/run_vlm.py --questions ... --out ... --adapter outputs/lora_contrastive
 
 Resumes automatically: questions already in --out are skipped.
+--batch-size N answers N questions at once (default 8; left padding). Use the SAME batch size
+for every method: batched and one-at-a-time answers can differ slightly in the last digit of a
+number. "seconds" per line = batch time / batch size.
 Writes {"qid", "raw", "seconds"} per line, for scripts/evaluate.py.
 
 Written for transformers 5.x (`dtype=` replaces the old `torch_dtype=`); first cluster run 17 Oct. Run on ~20
@@ -66,6 +69,7 @@ def main() -> None:
     ap.add_argument("--few-shot", type=int, default=0)
     ap.add_argument("--shots-from", type=Path, help="train questions for few-shot (default: train_single.jsonl)")
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--batch-size", type=int, default=8)
     args = ap.parse_args()
 
     import torch
@@ -92,29 +96,37 @@ def main() -> None:
         model = PeftModel.from_pretrained(model, str(args.adapter))
     model.eval()
     processor = AutoProcessor.from_pretrained(mc["name"])
+    processor.tokenizer.padding_side = "left"   # batched generation needs left padding
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     secs: list[float] = []
+    n_done = 0
     with open(args.out, "a", encoding="utf-8") as f:
-        for i, q in enumerate(todo, 1):
+        for start in range(0, len(todo), args.batch_size):
+            batch = todo[start:start + args.batch_size]
             t0 = time.time()
-            msgs = build_messages(q, shots, cfg)
-            text = processor.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-            images, videos = process_vision_info(msgs)
-            inputs = processor(text=[text], images=images, videos=videos, padding=True,
+            convs = [build_messages(q, shots, cfg) for q in batch]
+            texts = [processor.apply_chat_template(m, tokenize=False, add_generation_prompt=True) for m in convs]
+            images, videos = process_vision_info(convs)
+            inputs = processor(text=texts, images=images, videos=videos, padding=True,
                                return_tensors="pt").to(model.device)
             with torch.no_grad():
                 out = model.generate(**inputs, max_new_tokens=mc["max_new_tokens"], do_sample=False)
-            raw = processor.batch_decode(out[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)[0]
-            secs.append(time.time() - t0)
-            f.write(json.dumps({"qid": q["qid"], "raw": raw, "seconds": round(secs[-1], 2)}) + "\n")
+            raws = processor.batch_decode(out[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)
+            per_q = (time.time() - t0) / len(batch)
+            for q, raw in zip(batch, raws):
+                f.write(json.dumps({"qid": q["qid"], "raw": raw, "seconds": round(per_q, 2)}) + "\n")
             f.flush()
-            if i == 1:
-                print(f"first answer ({secs[-1]:.1f}s, includes warm-up): {raw[:300]}")
-            if i % 25 == 0 or i == len(todo):
-                print(f"{i}/{len(todo)}  last {secs[-1]:.1f}s")
-    if len(secs) > 1:
-        print(f"mean {sum(secs[1:]) / (len(secs) - 1):.2f} s per question (first one excluded: warm-up)")
+            if start == 0:
+                print(f"first answer (batch includes warm-up): {raws[0][:300]}")
+            else:
+                secs.append(per_q)
+            n_done += len(batch)
+            if (start // args.batch_size) % 10 == 0 or n_done == len(todo):
+                print(f"{n_done}/{len(todo)}  {per_q:.2f} s per question in last batch")
+    if secs:
+        print(f"mean {sum(secs) / len(secs):.2f} s per question (first batch excluded: warm-up; "
+              f"batch size {args.batch_size})")
 
 
 if __name__ == "__main__":

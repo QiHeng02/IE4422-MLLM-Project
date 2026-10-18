@@ -95,10 +95,10 @@ split:
   leakage_hamming_threshold: 5      # dHash distance counted as a near-duplicate
 
   # SCB: at most N photos per source video in each pile, spread over the video (decisions #31, D7).
-  # null = no cap. Set train/val after the GPU timing test (check B, 17 Oct, before merging:
-  # N=10 -> ~1,700 SCB train photos, N=20 -> ~3,000). Test can keep a higher cap: BowTurnHead's
-  # test pile (7 videos) carries most of the SCB RQ2 evidence.
-  video_cap: {train: null, val: null, test: null}
+  # null = no cap. Set 18 Oct from the GPU timing test (0.68 s per training example; 4.4 s per
+  # zero-shot answer, 1.5 s after LoRA). Test keeps a higher cap: BowTurnHead's test pile
+  # (7 videos) carries most of the SCB RQ2 evidence.
+  video_cap: {train: 20, val: 10, test: 30}
 
 # ---------------------------------------------------------------------------
 # Training data
@@ -120,6 +120,11 @@ build:
   #             to decide from the photo's style (the failure RQ2 tests).
   #   all:      every behaviour in rules.csv.
   behaviour_list: labelled
+
+  # At most this many TRAINING photos whose listed behaviours are never flagged in a trained
+  # setting (= hand-raising-only photos): their answer is always "no one" (decisions #33).
+  # Val and test are not cut. null = no cap.
+  max_train_nothing_to_flag: 500
 
 # ---------------------------------------------------------------------------
 # Model
