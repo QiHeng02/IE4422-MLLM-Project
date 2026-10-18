@@ -45,14 +45,15 @@ from ie4422.rules import RuleTable, load_rules
 PRETTY = lambda b: b.replace("_", " ")  # noqa: E731
 
 
-def reason_text(gt: list[dict], context_sentence: str) -> str:
-    """Neutral wording: in the participation setting the pointed-out behaviour is GOOD."""
-    situation = context_sentence.rstrip(".").lower()
+def reason_text(gt: list[dict], context: str) -> str:
+    """Neutral wording; names the SETTING (not its sentence), so every wording of a setting has
+    the same answer text. In the participation setting the pointed-out behaviour is GOOD."""
+    setting = PRETTY(context)
     if not gt:
-        return f"No student needs to be pointed out here ({situation})."
+        return f"No student needs to be pointed out in this {setting} situation."
     c = Counter(g["behaviour"] for g in gt)
     parts = [f"{n} {'student' if n == 1 else 'students'} {PRETTY(b)}" for b, n in sorted(c.items())]
-    return f"{', '.join(parts)}; relevant here ({situation})."
+    return f"{', '.join(parts)}; relevant in this {setting} situation."
 
 
 def make_question(row: dict, split: str, context: str, wording: str, sentence: str,
@@ -70,7 +71,7 @@ def make_question(row: dict, split: str, context: str, wording: str, sentence: s
         listed = [x for x in rules.behaviours if x in row["labelled"]]
     question = cfg["question"].format(context=sentence, behaviours=", ".join(PRETTY(x) for x in listed))
     answer = {"flagged": [{"bbox_2d": g["bbox_2d"], "behaviour": PRETTY(g["behaviour"])} for g in gt],
-              "reason": reason_text(gt, sentence)}
+              "reason": reason_text(gt, context)}
     return {
         "qid": f"{row['image']}|{context}|{wording}",
         "image": row["image"], "split": split, "context": context, "wording": wording,

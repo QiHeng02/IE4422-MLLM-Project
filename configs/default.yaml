@@ -39,21 +39,22 @@ scb_class_map:
 # ---------------------------------------------------------------------------
 # Settings ("contexts" in the code) = decision D2 (decisions.md #27)
 # ---------------------------------------------------------------------------
-# Each setting is a column in rules.csv. The sentence names the situation, never the
-# behaviours (otherwise the text gives the answer away and RQ2 tests nothing).
+# Each setting is a column in rules.csv. The sentence names the situation AND its purpose
+# (who is checking for what; decisions #37), never the behaviours (otherwise the text gives
+# the answer away and RQ2 tests nothing).
 # canonical: used for train, validation and the main test.
 # paraphrases: NEVER used in training; only for the reworded-setting test.
 contexts:
   lecture:
-    canonical: "This is a lecture."
+    canonical: "This is a lecture. The lecturer wants to know which students are not paying attention."
     paraphrases:
-      - "The teacher is giving a talk to the class."
-      - "Students are attending a lesson taught from the front."
+      - "The teacher is giving a talk and wants to spot students who are off-task."
+      - "During this lecture, the lecturer is looking for students who are distracted."
   closed_book_exam:
-    canonical: "This is a closed-book exam."
+    canonical: "This is a closed-book exam. The invigilator is checking for possible cheating."
     paraphrases:
-      - "Students are sitting a written test without notes or books."
-      - "An examination is in progress and no materials are allowed."
+      - "Students are sitting a written test without notes or books, and staff are watching for rule-breaking."
+      - "An examination with no materials allowed is in progress; the invigilator looks for suspicious behaviour."
   participation:
     canonical: "This is a lesson, and the teacher is checking which students are taking part."
     paraphrases:
