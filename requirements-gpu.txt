@@ -1,5 +1,5 @@
 # GPU side: inference, LoRA training, YOLO baseline.
-# Pin exact versions after the first working run on the A40 (pip freeze > requirements-lock.txt).
+# Exact working versions: requirements-lock-classroom.txt and requirements-lock-lf.txt (docs/cluster.md).
 -r requirements.txt
 torch>=2.3
 transformers>=4.49        # Qwen2.5-VL support

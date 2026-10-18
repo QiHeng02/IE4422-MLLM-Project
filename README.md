@@ -31,10 +31,10 @@ git clone https://github.com/QiHeng02/IE4422-MLLM-Project.git
 cd IE4422-MLLM-Project
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt && pip install -e .
-pytest -q                                                # 5 tests, ~1 s, no GPU, no data needed
+pytest -q                                                # 8 tests, a few seconds, no GPU, no data needed
 ```
 
-On the GPU cluster, also `pip install -r requirements-gpu.txt`. Data downloads: [data/README.md](data/README.md).
+On the NTU GPU cluster, follow [docs/cluster.md](docs/cluster.md) instead. Data downloads: [data/README.md](data/README.md).
 
 ## Repo layout
 
