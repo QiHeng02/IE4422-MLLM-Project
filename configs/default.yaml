@@ -10,6 +10,7 @@ paths:
   splits: data/processed/splits.json
   questions_dir: data/processed/questions
   results_dir: results
+  scene_tags: configs/scene_tags.csv   # exam yes/no per Roboflow scene (RQ3 scored on "yes" only)
 
 # ---------------------------------------------------------------------------
 # Behaviours and lesson rules
@@ -136,3 +137,5 @@ model:
 
 eval:
   iou_threshold: 0.5
+  box_exclude: [using_phone]        # Roboflow boxes the phone, not the student (decisions #26)
+  rq3_setting: closed_book_exam     # RQ3 = false flags on real exam scenes in this setting

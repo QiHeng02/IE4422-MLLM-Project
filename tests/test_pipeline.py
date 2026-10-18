@@ -150,6 +150,12 @@ def test_end_to_end(tmp_path):
     tags = list(csv.DictReader(open(tmp_path / "scene_tags.csv")))
     assert len(tags) == 21 and tags[0]["scene"] == "burst:20220406" and tags[0]["n_photos"] == "70"
     assert len(list((tmp_path / "scenes").glob("*.jpg"))) == 21
+    # tag every scene as a real exam, for the RQ3 scores below
+    Path(cfg["paths"]["scene_tags"]).parent.mkdir(parents=True, exist_ok=True)
+    with open(cfg["paths"]["scene_tags"], "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(tags[0]))
+        w.writeheader()
+        w.writerows({**t, "exam": "yes"} for t in tags)
 
     run("scripts/build_questions.py", "--config", cfg_path)
     qdir = Path(cfg["paths"]["questions_dir"])
@@ -183,8 +189,12 @@ def test_end_to_end(tmp_path):
     run("scripts/evaluate.py", "--config", cfg_path, "--method", "perfect",
         "--questions", qdir / "test.jsonl", "--predictions", perfect)
     m = json.loads((Path(cfg["paths"]["results_dir"]) / "metrics/perfect__test.json").read_text())
-    assert m["flag_f1"] == 1.0 and m["flip_acc"] == 1.0 and m["valid_json"] == 1.0
+    assert m["flag_f1"] == 1.0 and m["known_f1"] == 1.0 and m["flip_acc"] == 1.0 and m["valid_json"] == 1.0
     assert m["box_recall"] == 1.0
+    assert m["switch_rate"] == 1.0 and m["switch_n_images"] > 0 and m["false_switch"] == 0.0
+    assert m["rq3_n_photos"] > 0 and m["rq3_false_flag_rate"] == 0.0
+    assert set(m["by_dataset"]) == {"SCB", "Roboflow"} and "using_phone" in m["by_behaviour"]
+    assert all(q.get("scene") for q in test if q["subset"] == "exam_cheating")
 
     # rule-blind predictor: flags every visible behaviour whatever the lesson
     blind = tmp_path / "blind.jsonl"
@@ -198,6 +208,7 @@ def test_end_to_end(tmp_path):
         "--questions", qdir / "test.jsonl", "--predictions", blind)
     mb = json.loads((Path(cfg["paths"]["results_dir"]) / "metrics/blind__test.json").read_text())
     assert mb["flip_acc"] < 1.0 and mb["flag_f1"] < 1.0
+    assert mb["switch_rate"] == 0.0      # same answer whatever the setting text: never switches
 
     run("scripts/export_llamafactory.py", "--config", cfg_path)
     info = json.loads((qdir.parent / "llamafactory/dataset_info.json").read_text())

@@ -27,6 +27,7 @@ Each row:
   model_wh       [w, h] of the image after Qwen's resize
   behaviours     the behaviours this question lists
   subset         dataset folder(s) of the photo ("A+B" for a merged shared frame)
+  scene          scene id (Roboflow only; joins configs/scene_tags.csv for RQ3), else null
 """
 from __future__ import annotations
 
@@ -75,7 +76,7 @@ def make_question(row: dict, split: str, context: str, wording: str, sentence: s
         "image": row["image"], "split": split, "context": context, "wording": wording,
         "heldout": context in cfg["heldout_contexts"], "question": question,
         "answer": json.dumps(answer, ensure_ascii=False), "gt": gt, "ignore": ignore,
-        "model_wh": [mw, mh], "behaviours": listed, "subset": row["subset"],
+        "model_wh": [mw, mh], "behaviours": listed, "subset": row["subset"], "scene": row.get("scene"),
     }
 
 
@@ -92,7 +93,8 @@ def main() -> None:
         raise SystemExit(f"contexts {sorted(missing)} have no column in rules.csv")
 
     rows = list(read_jsonl(repo_path(cfg["paths"]["manifest"])))
-    split_of = json.loads(repo_path(cfg["paths"]["splits"]).read_text(encoding="utf-8"))["split"]
+    splits = json.loads(repo_path(cfg["paths"]["splits"]).read_text(encoding="utf-8"))
+    split_of, scene_map = splits["split"], splits.get("scene", {})
     rng = random.Random(cfg["seed"])
 
     train_ctx, all_ctx = cfg["train_contexts"], list(ctx)
@@ -122,6 +124,7 @@ def main() -> None:
         s = split_of.get(r["image"])
         if s is None or r["image"] in drop:
             continue
+        r = {**r, "scene": scene_map.get(r["image"])}
         canon = lambda c: make_question(r, s, c, "canonical", ctx[c]["canonical"], rules, cfg)  # noqa: E731
         if s == "train":
             out["train_contrastive"] += [canon(c) for c in train_ctx]

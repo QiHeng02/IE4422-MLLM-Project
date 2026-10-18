@@ -146,6 +146,7 @@ def main() -> None:
 
     # Scene subsets: name rules + picture fingerprints. Huge groups -> train only, thinned.
     forced: dict[str, str] = {}
+    scene_map: dict[str, str] = {}          # image -> scene id (scene subsets), used for RQ3 tags
     big = sc.get("big_scene") or {}
     for sub in sorted(scene_subsets):
         imgs = sorted(r["image"] for r in rows if r["subset"] == sub)
@@ -155,6 +156,7 @@ def main() -> None:
         sub_groups: dict[str, list[str]] = defaultdict(list)
         for i in imgs:
             sub_groups[scene_of[str(repo_path(i))]].append(i)
+            scene_map[i] = scene_of[str(repo_path(i))]
         n_big = 0
         for sid, members in sub_groups.items():
             if big and len(members) >= big["min_size"]:
@@ -194,7 +196,8 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     dropped = len(rows) - len(split_of)
     out.write_text(json.dumps({"seed": cfg["seed"], "n_groups": len(groups), "counts": counts,
-                               "left_out": dropped, "video_cap": cap, "split": split_of}, indent=1),
+                               "left_out": dropped, "video_cap": cap, "split": split_of,
+                               "scene": scene_map}, indent=1),
                    encoding="utf-8")
     print(f"{len(groups)} groups -> {counts}  (written to {out}); {dropped} photos left out "
           f"({dropped - n_capped} by thinning, {n_capped} by video_cap)")

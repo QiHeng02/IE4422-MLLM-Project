@@ -255,7 +255,8 @@ All methods answer the **same test questions** and the **same script** scores th
 |---|---|---|---|
 | **YOLO + flag table** | No; the table is code | The usual approach (late fusion). Answers "why not a detector + if-statement?" Reference for RQ3. | `yolo_rules_baseline.py` (one YOLO model; D4) |
 | **Qwen zero-shot** | Yes | Starting point for RQ1, and the "before" for RQ2 | `run_vlm.py` |
-| **Qwen few-shot** (2 examples) | Yes | Best result without training (RQ1) | `run_vlm.py --few-shot 2` |
+| **Qwen few-shot** (2 examples) | Yes | Best result without training from examples (RQ1) | `run_vlm.py --few-shot 2` |
+| **Qwen zero-shot + rules in prompt** | Yes, plus the flag-table row for its setting | Fair RQ1: does training beat simply **telling** the model the rules? (#35). Its participation score is not "unseen" (the rules are stated): report it separately | `run_vlm.py --rules-in-prompt` |
 | **Qwen + LoRA, normal** (run A) | Yes | Our trained model: each training photo with one random setting | `lora_single.yaml` |
 | *Optional:* **Qwen + LoRA, rule-contrastive** (run B) | Yes | A fix if run A ignores the text: each training photo with every setting | `lora_contrastive.yaml` |
 | *Optional:* QLoRA | Yes | GPU memory saved vs accuracy lost | add `quantization_bit: 4` to a LoRA config |
@@ -360,16 +361,17 @@ Every script reads `configs/default.yaml`. Change settings there, never in code.
 
 | Metric | What it measures | Used for | Status |
 |---|---|---|---|
-| `flag_f1` (main) | Per question: did it name the right behaviours to flag? F1 over (question, behaviour) pairs | all RQs | ✅ |
-| `ctx_<setting>_f1` | `flag_f1` for one setting (in `results/metrics/*.json`, not in `summary.csv`) | RQ1 | ✅ |
-| `flip_acc` | Same photo, all settings: share of photos where every answer is right | RQ2 | ✅ |
-| `box_recall` (secondary) | Flagged students found at IoU ≥ 0.5 | localisation, reported but not headline | ✅ (leave out using_phone: ❌ to add, #26) |
-| `valid_json` | Share of answers that parse | invalid answers count as "no one flagged" | ✅ |
-| **Precision per setting and per dataset** | Share of flags that are correct, e.g. on Roboflow photos with exam text. For RQ3: only scenes tagged `exam = yes` (#25) | RQ3 (false flags) | ❌ to add |
-| **Switch rate** | On photos whose correct answer changes between settings: share where the model's answer also changes | RQ2 (clearer than `flip_acc`, which also drops when a box is missed) | ❌ to add |
+| **`known_f1` (main)** | F1 over (question, behaviour) pairs, trained settings only (lecture, closed-book exam) | all RQs | ✅ |
+| `ctx_<setting>_f1` | The same, per setting | RQ1 | ✅ |
+| `flag_f1` | Every question in the file, held-out setting included | reference | ✅ |
+| `flip_acc` | Trained settings: share of photos where every setting's answer is exactly right | RQ2 | ✅ |
+| **`switch_rate`** | Photos whose correct answer changes between lecture and exam: share where the model's answer changes too | RQ2 (main) | ✅ 18 Oct |
+| `false_switch` | Photos whose correct answer does not change: share where the model's answer changes anyway | RQ2 control | ✅ 18 Oct |
+| **`rq3_precision`, `rq3_false_flag_rate`** | Roboflow photos tagged `exam = yes`, closed-book exam setting: share of flags that are right; share of photos with at least one wrong flag | RQ3 (#25) | ✅ 18 Oct |
+| `by_behaviour`, `by_subset`, `by_dataset` | The same scores per behaviour, subset and dataset, per setting (in `results/metrics/*.json`; behaviour and dataset tables also printed) | talking is a free point; participation per row (#29) | ✅ 18 Oct |
 | `unseen_f1`, `wording_para<n>_f1` | Held-out setting; reworded setting text | optional tests | ✅ |
-| **Per-behaviour F1 in the held-out setting** | Participation, per row. Talking is `flag` in every setting, so it inflates `unseen_f1`; hand-raising is the real test | held-out test (#29) | ❌ to add |
-| **Main F1 on trained settings only** | `flag_f1` now averages over every test question, held-out ones included; report `known_f1` as the headline | all RQs | ❌ to switch |
+| `box_recall` (secondary) | Flagged students found at IoU ≥ 0.5, `using_phone` left out (#26) | localisation | ✅ |
+| `valid_json` | Share of answers that parse | invalid answers count as "no one flagged" | ✅ |
 
 **Why F1, not accuracy.** Most checks are "not flagged". A model that never flags anyone would get high accuracy and zero F1.
 
@@ -386,6 +388,7 @@ Every script reads `configs/default.yaml`. Change settings there, never in code.
 | YOLO + flag table | | | n/a (no text) | |
 | Qwen zero-shot | | | | |
 | Qwen few-shot | | | | |
+| Qwen zero-shot + rules in prompt | | | | |
 | Qwen + LoRA (run A) | | | | |
 | *Qwen + LoRA (run B, if trained)* | | | | |
 

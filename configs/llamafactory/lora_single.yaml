@@ -30,7 +30,7 @@ dataset: classroom_train_single
 eval_dataset: classroom_val
 template: qwen2_vl
 cutoff_len: 4096
-preprocessing_num_workers: 8
+preprocessing_num_workers: 4          # the cluster gives 4 CPUs per A40
 
 ### output
 output_dir: outputs/lora_single

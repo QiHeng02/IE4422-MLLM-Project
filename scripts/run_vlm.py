@@ -6,6 +6,9 @@
     # few-shot: k solved training examples (image + answer) before the question
     python scripts/run_vlm.py --questions ... --out ... --few-shot 2
 
+    # prompting baseline that is TOLD the flag table for the question's setting (decisions #35)
+    python scripts/run_vlm.py --questions ... --out ... --rules-in-prompt
+
     # after training: load LoRA adapters
     python scripts/run_vlm.py --questions ... --out ... --adapter outputs/lora_contrastive
 
@@ -36,12 +39,28 @@ def image_part(path: str, cfg: dict) -> dict:
             "min_pixels": b["min_pixels"], "max_pixels": b["max_pixels"]}
 
 
-def build_messages(q: dict, shots: list[dict], cfg: dict) -> list[dict]:
+WORDS = {"flag": "point out", "ok": "do not point out"}
+
+
+def with_rules(q: dict, rules) -> str:
+    """Question text plus the flag-table row for each listed behaviour in q's setting.
+    `unused` cells are not stated (not scored either)."""
+    if rules is None:
+        return q["question"]
+    parts = [f"{b.replace('_', ' ')}: {WORDS[rules.status(b, q['context'])]}"
+             for b in q.get("behaviours") or rules.behaviours if rules.status(b, q["context"]) in WORDS]
+    sentence = "Rules for this situation: " + "; ".join(parts) + "."
+    anchor = "Which students should be pointed out"
+    text = q["question"]
+    return text.replace(anchor, f"{sentence} {anchor}", 1) if anchor in text else f"{text} {sentence}"
+
+
+def build_messages(q: dict, shots: list[dict], cfg: dict, rules=None) -> list[dict]:
     msgs = []
     for s in shots:
-        msgs.append({"role": "user", "content": [image_part(s["image"], cfg), {"type": "text", "text": s["question"]}]})
+        msgs.append({"role": "user", "content": [image_part(s["image"], cfg), {"type": "text", "text": with_rules(s, rules)}]})
         msgs.append({"role": "assistant", "content": [{"type": "text", "text": s["answer"]}]})
-    msgs.append({"role": "user", "content": [image_part(q["image"], cfg), {"type": "text", "text": q["question"]}]})
+    msgs.append({"role": "user", "content": [image_part(q["image"], cfg), {"type": "text", "text": with_rules(q, rules)}]})
     return msgs
 
 
@@ -70,6 +89,8 @@ def main() -> None:
     ap.add_argument("--shots-from", type=Path, help="train questions for few-shot (default: train_single.jsonl)")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--rules-in-prompt", action="store_true",
+                    help="state the flag-table row for the question's setting in the prompt (baseline)")
     args = ap.parse_args()
 
     import torch
@@ -82,6 +103,12 @@ def main() -> None:
     done = {r["qid"] for r in read_jsonl(args.out)} if args.out.exists() else set()
     todo = [q for q in questions if q["qid"] not in done]
     print(f"{len(todo)} to run ({len(done)} already done)")
+
+    rules = None
+    if args.rules_in_prompt:
+        from ie4422.rules import load_rules
+        rules = load_rules(repo_path(cfg["rules_csv"]))
+        print("rules in prompt, e.g.:", with_rules(questions[0], rules)[:400] if questions else "")
 
     shots = []
     if args.few_shot:
@@ -105,7 +132,7 @@ def main() -> None:
         for start in range(0, len(todo), args.batch_size):
             batch = todo[start:start + args.batch_size]
             t0 = time.time()
-            convs = [build_messages(q, shots, cfg) for q in batch]
+            convs = [build_messages(q, shots, cfg, rules) for q in batch]
             texts = [processor.apply_chat_template(m, tokenize=False, add_generation_prompt=True) for m in convs]
             images, videos = process_vision_info(convs)
             inputs = processor(text=texts, images=images, videos=videos, padding=True,
