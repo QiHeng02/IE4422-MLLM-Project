@@ -31,3 +31,5 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+# error-analysis cards hold dataset photos: share privately, never commit
+results/error_pack/

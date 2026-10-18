@@ -216,6 +216,14 @@ def test_end_to_end(tmp_path):
     info = json.loads((qdir.parent / "llamafactory/dataset_info.json").read_text())
     assert set(info) == {"classroom_train_single", "classroom_train_contrastive", "classroom_val"}
 
+    # Error-analysis pack from the blind predictor (it makes mistakes in some settings)
+    pack = tmp_path / "pack"
+    out = run("scripts/error_pack.py", "--config", cfg_path, "--questions", qdir / "test.jsonl",
+              "--predictions", blind, "--n", 5, "--out", pack)
+    assert len(list((pack / "cards").glob("*.jpg"))) == 5, out
+    sample = (pack / "sample.csv").read_text(encoding="utf-8-sig").splitlines()
+    assert len(sample) == 6 and "category" in sample[0] and "no-switch" in (pack / "all_errors.csv").read_text("utf-8-sig")
+
     # YOLO baseline data: same train/val photos as the language model, our 5 behaviours as classes
     yolo = tmp_path / "yolo"
     out = run("scripts/export_yolo.py", "--config", cfg_path, "--out", yolo)
