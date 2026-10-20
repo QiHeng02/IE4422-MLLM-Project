@@ -1,0 +1,378 @@
+{
+  "method": "qwen_rules_v3",
+  "questions": "test",
+  "predictions": "results/predictions/qwen_rules_v3_test.jsonl",
+  "note": "",
+  "time": "2026-10-20T08:19:45",
+  "n_questions": 2265,
+  "valid_json": 1.0,
+  "flag_f1": 0.7338,
+  "flag_precision": 0.9211,
+  "flag_recall": 0.6098,
+  "ctx_closed_book_exam_f1": 0.4382,
+  "ctx_lecture_f1": 0.2936,
+  "ctx_participation_f1": 0.8923,
+  "known_f1": 0.4043,
+  "known_precision": 0.6861,
+  "known_recall": 0.2866,
+  "unseen_f1": 0.8923,
+  "wording_canonical_f1": 0.7338,
+  "flip_acc": 0.7695,
+  "flip_n_images": 755,
+  "switch_rate": 0.4043,
+  "switch_n_images": 188,
+  "false_switch": 0.0141,
+  "rq3_precision": 0.875,
+  "rq3_false_flag_rate": 0.0488,
+  "rq3_n_photos": 41,
+  "box_recall": 0.0894,
+  "box_precision": 0.3161,
+  "by_behaviour": {
+    "hand_raising": {
+      "closed_book_exam": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "participation": {
+        "tp": 431,
+        "fp": 2,
+        "fn": 58,
+        "precision": 0.9954,
+        "recall": 0.8814,
+        "f1": 0.9349
+      }
+    },
+    "reading_notes": {
+      "closed_book_exam": {
+        "tp": 7,
+        "fp": 3,
+        "fn": 17,
+        "precision": 0.7,
+        "recall": 0.2917,
+        "f1": 0.4118
+      }
+    },
+    "talking": {
+      "closed_book_exam": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 44,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "lecture": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 44,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "participation": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 44,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "turning_head": {
+      "closed_book_exam": {
+        "tp": 58,
+        "fp": 1,
+        "fn": 120,
+        "precision": 0.9831,
+        "recall": 0.3258,
+        "f1": 0.4895
+      }
+    },
+    "using_phone": {
+      "closed_book_exam": {
+        "tp": 13,
+        "fp": 5,
+        "fn": 6,
+        "precision": 0.7222,
+        "recall": 0.6842,
+        "f1": 0.7027
+      },
+      "lecture": {
+        "tp": 16,
+        "fp": 30,
+        "fn": 3,
+        "precision": 0.3478,
+        "recall": 0.8421,
+        "f1": 0.4923
+      }
+    }
+  },
+  "by_subset": {
+    "SCB5-Discuss-2024-9-17": {
+      "closed_book_exam": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 6,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "lecture": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 6,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "participation": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 6,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "SCB5-Discuss-2024-9-17+SCB5-Handrise-Read-write-2024-9-17": {
+      "closed_book_exam": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 16,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "lecture": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 16,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "participation": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 20,
+        "precision": 1.0,
+        "recall": 0.2,
+        "f1": 0.3333
+      }
+    },
+    "SCB5-Discuss-2024-9-17+SCB5-Handrise-Read-write-2024-9-17+SCB_BowTurnHead_20250509": {
+      "closed_book_exam": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 34,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "lecture": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 17,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "participation": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 20,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "SCB5-Discuss-2024-9-17+SCB_BowTurnHead_20250509": {
+      "closed_book_exam": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 7,
+        "precision": 1.0,
+        "recall": 0.3,
+        "f1": 0.4615
+      },
+      "lecture": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "participation": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "SCB5-Handrise-Read-write-2024-9-17": {
+      "closed_book_exam": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "lecture": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "participation": {
+        "tp": 408,
+        "fp": 2,
+        "fn": 45,
+        "precision": 0.9951,
+        "recall": 0.9007,
+        "f1": 0.9455
+      }
+    },
+    "SCB5-Handrise-Read-write-2024-9-17+SCB_BowTurnHead_20250509": {
+      "closed_book_exam": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 54,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "lecture": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "participation": {
+        "tp": 18,
+        "fp": 0,
+        "fn": 6,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571
+      }
+    },
+    "SCB_BowTurnHead_20250509": {
+      "closed_book_exam": {
+        "tp": 47,
+        "fp": 0,
+        "fn": 17,
+        "precision": 1.0,
+        "recall": 0.7344,
+        "f1": 0.8468
+      },
+      "lecture": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "participation": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "exam_cheating": {
+      "closed_book_exam": {
+        "tp": 28,
+        "fp": 9,
+        "fn": 53,
+        "precision": 0.7568,
+        "recall": 0.3457,
+        "f1": 0.4746
+      },
+      "lecture": {
+        "tp": 16,
+        "fp": 30,
+        "fn": 3,
+        "precision": 0.3478,
+        "recall": 0.8421,
+        "f1": 0.4923
+      },
+      "participation": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    }
+  },
+  "by_dataset": {
+    "Roboflow": {
+      "closed_book_exam": {
+        "tp": 28,
+        "fp": 9,
+        "fn": 53,
+        "precision": 0.7568,
+        "recall": 0.3457,
+        "f1": 0.4746
+      },
+      "lecture": {
+        "tp": 16,
+        "fp": 30,
+        "fn": 3,
+        "precision": 0.3478,
+        "recall": 0.8421,
+        "f1": 0.4923
+      },
+      "participation": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "SCB": {
+      "closed_book_exam": {
+        "tp": 50,
+        "fp": 4,
+        "fn": 134,
+        "precision": 0.9259,
+        "recall": 0.2717,
+        "f1": 0.4202
+      },
+      "lecture": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 44,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "participation": {
+        "tp": 431,
+        "fp": 2,
+        "fn": 102,
+        "precision": 0.9954,
+        "recall": 0.8086,
+        "f1": 0.8923
+      }
+    }
+  }
+}
