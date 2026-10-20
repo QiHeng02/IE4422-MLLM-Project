@@ -1,39 +1,67 @@
 # Fusion and check: vision + transcript → per-student report
 
-Follows Hao Yu's collaboration design (steps B6–B7). Written for WTD. Laptop only.
+**Scripts and fusion owner.** Same as HY's Remaining Work Guide V2, **Step 4** (Thu 22 – Fri 23 Oct). Laptop only.
+If this file and the V2 guide disagree, `docs/decisions.md` decides; ask in the group chat.
 
-**Task.** Run `scripts/fuse_wtd.py` (Hao Yu) on the vision answers and the clean transcript, then check the results.
+**Task.** Run `fuse_wtd.py` 4 times (LoRA / zero-shot × human / asr transcript), compare with WTD's collaboration
+codes, make one figure per group, and log it.
 
-## Inputs
-- `data/processed/wtd/questions.jsonl` (from `scripts/wtd_frames.py`, Qi Heng)
-- Vision answers: `results/predictions/wtd_lora.jsonl` and `wtd_zeroshot.jsonl` (Qi Heng, cluster)
-  The model's own output: per box one of talking / turning head / hand raising / using phone.
-- `data/processed/wtd/transcripts.csv` (audio branch)
+## Before you start
+1. Laptop setup from the V2 guide (B3): repo cloned, `.venv` active, `pip install -e .`.
+2. **Scripts:** HY's 7 WTD scripts are shared in the group chat, **not on GitHub**. Copy all 7 into `scripts/`
+   (latest version posted). **Never `git add .`**: it would commit them.
+3. Copy these from `WTD_handoff` to the same paths in your repo copy:
+   - `data/processed/wtd/questions.jsonl` (Model owner, Step 2)
+   - `results/predictions/wtd_lora.jsonl` and `results/predictions/wtd_zeroshot.jsonl` (Model owner, Step 2)
+   - `data/processed/wtd/transcripts.csv` (Audio owner, Step 3)
+   - and `All_Groups_CPS.csv` from the Data owner → `data/raw/wtd/csv/`
 
-## Run (4 times)
-```
+## Run
+```bash
+git pull
+
+# 1. check what you received (a PROBLEM goes back to its owner)
+python scripts/check_wtd.py predictions --file results/predictions/wtd_lora.jsonl
+python scripts/check_wtd.py predictions --file results/predictions/wtd_zeroshot.jsonl
+python scripts/check_wtd.py transcripts
+
+# 2. the four fusion runs (seconds each)
 python scripts/fuse_wtd.py --predictions results/predictions/wtd_lora.jsonl     --source human --name wtd_lora_human
-python scripts/fuse_wtd.py --predictions results/predictions/wtd_zeroshot.jsonl --source human --name wtd_zeroshot_human
 python scripts/fuse_wtd.py --predictions results/predictions/wtd_lora.jsonl     --source asr   --name wtd_lora_asr
+python scripts/fuse_wtd.py --predictions results/predictions/wtd_zeroshot.jsonl --source human --name wtd_zeroshot_human
 python scripts/fuse_wtd.py --predictions results/predictions/wtd_zeroshot.jsonl --source asr   --name wtd_zeroshot_asr
+
+# 3. one results table (paste into docs/experiment_log.md)
+python scripts/check_wtd.py results
+
+# 4. compare with WTD's collaboration codes
+python scripts/check_wtd.py cps --name wtd_lora_human
+
+# 5. report figures (talk network + per-student evidence under the AAC&U Teamwork rows)
+python scripts/plot_wtd.py --name wtd_lora_human --group 1
+python scripts/plot_wtd.py --name wtd_lora_human --group 2
+python scripts/plot_wtd.py --name wtd_lora_human --group 3
 ```
-(Change the `--source` choices in the script from `whisper` to `asr`: WTD's automatic transcript is Google.)
 
 ## Outputs
-- `results/metrics/<name>.json`: vision "talking" vs transcript (precision, recall, F1), false "talking" caught by audio
-- `results/wtd/<name>_students.csv`: per-student report
-- `results/wtd/<name>_edges.csv`: talk network (who replies to whom)
+- `results/metrics/wtd_*.json`: vision "talking" vs who really spoke (precision, recall, F1)
+- `results/wtd/wtd_*_students.csv`: per-student report; `results/wtd/wtd_*_edges.csv`: talk network
+- `results/wtd/<run>_gNN.png`: one figure per group
 
-## Checks
-1. **Before trusting anything:** look at 20 frames with their boxes. Does the box-to-person mapping (left / middle / right) hold?
-   If boxes miss people, report talking per frame ("someone is talking") instead of per person.
-2. **Against WTD's collaboration codes** (`All_Groups_CPS.csv`, same rows as the Oracle transcript): per student, compare
-   speaking share / turns / replies with the share of the student's utterances that carry collaboration codes.
-   **Use proportions, not counts** (students who talk more always have more coded utterances).
-3. Expect from the test results: LoRA finds talking but never hand-raising and may ignore the new sentence;
-   zero-shot finds hand-raising but not talking. Report both.
+## How to read it
+- **Expected pattern (from the test set):** LoRA finds talking but rarely follows a new sentence (participation
+  F1 0.12); zero-shot follows new sentences but rarely finds talking. Human vs asr shows how much Whisper's
+  mistakes change the numbers.
+- **CPS comparison:** speaking share and turns next to each student's share of CPS-coded utterances, plus one rank
+  correlation. Talking is not collaborating, so a weak match is a finding, not a bug: write it down either way.
+- **Box check (Step 2's count out of 20):** if many boxes were on the wrong seat, say the per-student vision numbers
+  (attending, hand-raising, phone) are unreliable and report only frame-level talking.
 
-## Done when
-- 4 runs done; one table: vision talking F1 (LoRA vs zero-shot, human vs ASR transcript).
-- One per-student report + talk network figure for one group, for the proposal.
-- Each run written in `docs/experiment_log.md` with its command.
+## Hand off
+1. Write the experiment log entry (template at the top of `docs/experiment_log.md`): the commands, the results
+   table, the CPS comparison, Step 2's box-check count, what you noticed.
+2. Commit and push **only** `results/metrics/wtd_*.json` and `docs/experiment_log.md` (`git status` first).
+3. Put `results/wtd/` (CSVs and figures) in `WTD_handoff`.
+4. Post: **"DONE fusion: 4 runs, table in experiment_log, 3 figures in hand-off"**.
+
+Wording in everything you write: "evidence for review", "may need a check"; never "attention", "cheating" or a grade.
