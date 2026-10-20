@@ -381,16 +381,26 @@ Every script reads `configs/default.yaml`. Change settings there, never in code.
 3. One scorer (`evaluate.py`) for every method.
 4. Every reported number comes from `evaluate.py` output (`results/summary.csv` or `results/metrics/*.json`), with `--note` saying the checkpoint or seed.
 
-### Results table (fill from `evaluate.py` output)
+### Results table: final test (test, 755 photos / 2,265 questions; scored 20 Oct)
 
-| Method | F1, lesson setting | F1, exam setting | Text-switch (`flip_acc` / switch rate) | Precision, exam photos |
-|---|---|---|---|---|
-| YOLO + flag table | | | n/a (no text) | |
-| Qwen zero-shot | | | | |
-| Qwen few-shot | | | | |
-| Qwen zero-shot + rules in prompt | | | | |
-| Qwen + LoRA (run A) | | | | |
-| *Qwen + LoRA (run B, if trained)* | | | | |
+Main F1 = `known_f1` (lecture + exam, the trained settings). Participation = never trained. Switch rate (false switch) on images whose answer should change between lecture and exam. Exam false-flag rate = exam-tagged Roboflow photos with at least one wrong flag (41 photos: indicative only).
+
+| Method | Main F1 | F1 lecture / exam | **F1 participation** | Switch rate (false) | `flip_acc` | Exam false-flag rate (precision) | Box recall | Valid JSON |
+|---|---|---|---|---|---|---|---|---|
+| YOLO + flag table | *pending* | | | n/a (no text) | | | | |
+| Qwen zero-shot | 0.10 | 0.04 / 0.16 | 0.80 | 0.65 (0.20) | 0.10 | 5% (0.89) | 0.09 | 99.9% |
+| Qwen few-shot (2) | 0.06 | 0.05 / 0.06 | 0.84 | 0.14 (0.18) | 0.21 | 0% (barely flags) | 0.06 | 98.5% |
+| Qwen zero-shot + rules in prompt | 0.40 | 0.29 / 0.44 | 0.89 | 0.40 (0.01) | 0.77 | 5% (0.88) | 0.09 | 100% |
+| **Qwen + LoRA (final checkpoint)** | **0.80** | **0.87 / 0.79** | **0.12** | **0.84 (0.04)** | **0.89** | 17% (0.81) | 0.09 | 98.4% |
+| Qwen + LoRA, reworded setting sentences (4,530 q.) | 0.45 | 0.78 / 0.34 | 0.10 | 0.05 (0.01) | 0.74 | 0% (1.00) | 0.06 | 98.3% |
+
+**Findings (test)**
+- **RQ1:** fine-tuning beats every prompting baseline on the trained settings (0.80 vs 0.40 for rules-in-prompt).
+- **RQ2:** with the exact training sentences, LoRA switches its answer correctly 84% of the time (false switch 4%). With **reworded** sentences it almost stops switching (0.05): it learned the training sentences, not their meaning (exam F1 0.79 → 0.34).
+- **Participation (never trained):** LoRA 0.12 vs 0.80–0.89 for the untrained model. LoRA never points out hand-raising (0 / 489; it was always "do not point out" in training) but finds talking (0.89). The untrained model is the reverse: hand-raising 0.93, talking 0.00 in every setting.
+- **Overall:** fine-tuning specialises: it learns the trained rules well but loses flexibility to follow new or reworded instructions. Future work: train with several wordings per setting and a few participation examples.
+- **RQ3:** 17% of exam photos get at least one wrong flag (val: 40%); 41 photos only.
+- Boxes remain weak (box recall 0.09).
 
 ### Validation results so far (val, 642 questions; NOT the final numbers)
 
