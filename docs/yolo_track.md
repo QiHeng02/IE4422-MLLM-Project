@@ -85,7 +85,12 @@ Send Mambo the three outputs and your pick.
 
 ## Step 5: Final test (only when Mambo says the final test can start)
 
-The team must finish reviewing the decisions first, because test is run **once**. Replace `C` with your threshold:
+**Before running, confirm all three** (otherwise the comparison is not fair; tell Mambo first):
+1. You ran steps 1–4 of `docs/cluster.md` and got **train 1,668 / val 321 / test 755** photos.
+2. You built the YOLO data with `scripts/export_yolo.py` (step 1 printed `train: 1668 photos`, `val: 321 photos`).
+3. You chose the threshold on **val** only (step 4) and have not looked at test.
+
+Test is run **once**. Replace `C` with your threshold:
 
 ```bash
 sbatch --job-name=yolo_test jobs/run.sbatch bash -c '\
