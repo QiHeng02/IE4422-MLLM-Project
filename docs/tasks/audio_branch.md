@@ -1,33 +1,31 @@
-# Audio branch: transcripts → per-student participation stats
+# Audio branch: build the clean transcript table
 
-**Task.** A Python script that turns a group's transcript into per-student participation stats and a
-"who replies to whom" network, saved as CSV files (+ one picture per group).
-Laptop only: no cluster, no audio model (the transcripts already say who spoke and when).
+Follows Hao Yu's collaboration design (step B5). Written for WTD; if the team picks another dataset, only the
+input step changes. Laptop only: no cluster, no audio model (the dataset already has transcripts).
 
-**Tools.** `pip install pandas networkx matplotlib`
+**Task.** Turn the dataset's transcripts into ONE clean table that `scripts/fuse_wtd.py` reads.
+The talk statistics and the talk network are computed later by `fuse_wtd.py`, not here.
 
-## Input
-One transcript CSV per group with: speaker ID, start (s), end (s), text.
-WTD example: `Utterance, Start, End, Group, Participant, Transcript`. Drop non-students (WTD: participant 4).
+## Input (WTD)
+- Human transcripts: `Group_XX_Oracle.csv` with `Utterance, Start, End, Group, Participant, Transcript`
+- Automatic transcripts: `Group_XX_Google.csv` (check its columns first: does it have a speaker ID?)
+- Seat map from Qi Heng: `data/processed/wtd/seats.csv` with `group, participant, seat` (seat = P1 left, P2 middle, P3 right in the video)
+Ask Qi Heng for the CSV files.
 
-## Definitions
-- **utterance** = one transcript row.
-- **turn** = consecutive utterances by the same student, no other student in between.
-- **speaking_time** = sum of (end − start) of the student's utterances (s).
-- **talk_share** = student's speaking_time / all students' speaking_time in the group.
-- **reply** = student B's turn starts within **5 s** after student A's turn ends (B ≠ A) → edge A → B.
-- **window** = 30-s slices from the start (0–30, 30–60, …); an utterance belongs to the window it starts in.
+## Output: `data/processed/wtd/transcripts.csv`
+Exactly these columns: `group, speaker, start, end, text, source`
+- `group`: integer (1–10)
+- `speaker`: **P1 / P2 / P3 from the seat map** (not the raw participant number: participant 1 is not always on the left)
+- `start`, `end`: seconds from the video start
+- `source`: `human` (Oracle) or `asr` (Google)
 
-## Outputs (`results/audio/<dataset>/`)
-1. `audio_students.csv`: `dataset, group, student, speaking_time_s, talk_share, n_utterances, n_turns, mean_turn_s, replies_given, replies_received, partners_replied_to`
-2. `audio_windows.csv`: `dataset, group, student, window_start_s, speaking_time_s, n_utterances, spoke`
-3. `audio_edges.csv`: `dataset, group, from_student, to_student, n_replies`
-4. `figures/<group>_network.png`: arrows A → B, thickness = n_replies
+## Rules
+- **Drop participant 4** (the experimenter reading the instructions).
+- Keep one row per utterance; do not merge.
+- If the Google file has no speaker IDs, output `human` rows only and tell the group.
 
 ## Done when
-- One command runs all groups (e.g. `python scripts/audio_branch.py --input <folder>`).
-- Each group's talk_share sums to 1.0; utterance counts match the transcript (students only).
-- One group spot-checked by hand.
-- Script committed as `scripts/audio_branch.py`.
-
-**Optional:** run it on the automatic transcript too (WTD: `Group_XX_Google.csv`, if it has speaker IDs) and compare.
+- `transcripts.csv` exists with the columns above; no participant 4; speakers only P1/P2/P3.
+- Row count per group = Oracle rows minus participant-4 rows (WTD: e.g. Group_02 = 181 − 20 = 161).
+- 5 utterances checked against the video: do the times line up?
+- Script committed as `scripts/build_transcripts.py`.

@@ -1,38 +1,39 @@
-# Fusion and check: combine talk + vision, map to AAC&U, test against labels
+# Fusion and check: vision + transcript → per-student report
 
-**Task.** Combine the audio branch output with the vision output per student, map it to two AAC&U Teamwork
-rubric rows, and check it against the dataset's collaboration labels. Laptop only.
+Follows Hao Yu's collaboration design (steps B6–B7). Written for WTD. Laptop only.
+
+**Task.** Run `scripts/fuse_wtd.py` (Hao Yu) on the vision answers and the clean transcript, then check the results.
 
 ## Inputs
-- `audio_windows.csv`, `audio_students.csv`, `audio_edges.csv` (audio branch)
-- `vision_windows.csv` (Mambo, from the cluster): `dataset, group, student, window_start_s, n_frames, n_frames_participating, visible_share`
-- The dataset's collaboration labels (WTD: `All_Groups_CPS.csv`, same rows as the transcript)
+- `data/processed/wtd/questions.jsonl` (from `scripts/wtd_frames.py`, Qi Heng)
+- Vision answers: `results/predictions/wtd_lora.jsonl` and `wtd_zeroshot.jsonl` (Qi Heng, cluster)
+  The model's own output: per box one of talking / turning head / hand raising / using phone.
+- `data/processed/wtd/transcripts.csv` (audio branch)
 
-## 1. Agree the mapping rules first (with the team, before looking at any result)
-| AAC&U row | Evidence | Rule |
-|---|---|---|
-| Contributes to team meetings | talk_share, n_turns, visible_share | (team decides) |
-| Facilitates the contributions of team members | replies_given, partners_replied_to, replies_received | (team decides) |
+## Run (4 times)
+```
+python scripts/fuse_wtd.py --predictions results/predictions/wtd_lora.jsonl     --source human --name wtd_lora_human
+python scripts/fuse_wtd.py --predictions results/predictions/wtd_zeroshot.jsonl --source human --name wtd_zeroshot_human
+python scripts/fuse_wtd.py --predictions results/predictions/wtd_lora.jsonl     --source asr   --name wtd_lora_asr
+python scripts/fuse_wtd.py --predictions results/predictions/wtd_zeroshot.jsonl --source asr   --name wtd_zeroshot_asr
+```
+(Change the `--source` choices in the script from `whisper` to `asr`: WTD's automatic transcript is Google.)
 
-Also decide: what counts as "participating" in a window when audio and vision disagree.
+## Outputs
+- `results/metrics/<name>.json`: vision "talking" vs transcript (precision, recall, F1), false "talking" caught by audio
+- `results/wtd/<name>_students.csv`: per-student report
+- `results/wtd/<name>_edges.csv`: talk network (who replies to whom)
 
-## 2. Fusion
-Join audio and vision on `dataset, group, student, window_start_s` →
-`results/fusion/<dataset>/students_summary.csv` (per student: audio features, vision features, two rubric scores),
-plus one example "report card" for the proposal.
-
-## 3. "Truth" from the labels: use proportions, not counts
-(Students who talk more always have more coded utterances.)
-- share of the student's utterances with any collaboration code;
-- share per facet (WTD: CONST, NEG, MAINTAIN);
-- for "Facilitates": share coded as responding to / questioning others (WTD: `CPS_NEG_Responds_*`).
-
-## 4. Compare
-For each rubric row: **audio only, vision only, audio + vision** → Spearman rank correlation with the truth
-across all students (state how many). Also: is the top student per group the same by score and by labels?
+## Checks
+1. **Before trusting anything:** look at 20 frames with their boxes. Does the box-to-person mapping (left / middle / right) hold?
+   If boxes miss people, report talking per frame ("someone is talking") instead of per person.
+2. **Against WTD's collaboration codes** (`All_Groups_CPS.csv`, same rows as the Oracle transcript): per student, compare
+   speaking share / turns / replies with the share of the student's utterances that carry collaboration codes.
+   **Use proportions, not counts** (students who talk more always have more coded utterances).
+3. Expect from the test results: LoRA finds talking but never hand-raising and may ignore the new sentence;
+   zero-shot finds hand-raising but not talking. Report both.
 
 ## Done when
-- Rules agreed before step 4.
-- `students_summary.csv`, one results table (3 versions × 2 rubric rows), one report card.
-- Caveats noted: few students; correlation is not the rubric itself (AAC&U is judged by people).
-- Scripts committed (`scripts/fusion.py`, `scripts/check_labels.py`).
+- 4 runs done; one table: vision talking F1 (LoRA vs zero-shot, human vs ASR transcript).
+- One per-student report + talk network figure for one group, for the proposal.
+- Each run written in `docs/experiment_log.md` with its command.
