@@ -1,0 +1,16 @@
+{
+  "name": "wtd_zeroshot_human",
+  "predictions": "results/predictions/wtd_zeroshot.jsonl",
+  "source": "human",
+  "frames": 1534,
+  "valid_json": 1.0,
+  "vision_talking_vs_transcript": {
+    "tp": 767,
+    "fp": 1753,
+    "fn": 729,
+    "precision": 0.304,
+    "recall": 0.513,
+    "f1": 0.382
+  },
+  "vision_false_talking_caught_by_audio": 1753
+}

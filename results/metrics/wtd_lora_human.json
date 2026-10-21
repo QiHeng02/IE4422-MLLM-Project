@@ -1,0 +1,16 @@
+{
+  "name": "wtd_lora_human",
+  "predictions": "results/predictions/wtd_lora.jsonl",
+  "source": "human",
+  "frames": 1534,
+  "valid_json": 1.0,
+  "vision_talking_vs_transcript": {
+    "tp": 636,
+    "fp": 1672,
+    "fn": 860,
+    "precision": 0.276,
+    "recall": 0.425,
+    "f1": 0.334
+  },
+  "vision_false_talking_caught_by_audio": 1672
+}
