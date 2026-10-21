@@ -1,0 +1,44 @@
+{
+  "metric": "raw behaviour detection before fixed rules",
+  "split": "test",
+  "images": 755,
+  "checkpoint_sha256": "f7fc6fdd00ca5ed51c2c8568f024e47579965e332c68bb89915c3c12c0a79cad",
+  "ultralytics": "8.4.180",
+  "conf_floor_for_PR_curve": 0.001,
+  "nms_iou": 0.7,
+  "imgsz": 640,
+  "max_det": 300,
+  "mAP50": 0.3227949713620391,
+  "mAP50_95": 0.18986737311261076,
+  "by_class": {
+    "talking": {
+      "AP50": 0.48392075065053963,
+      "AP50_95": 0.32930131016714587
+    },
+    "turning_head": {
+      "AP50": 0.17173798266301782,
+      "AP50_95": 0.110125633388039
+    },
+    "hand_raising": {
+      "AP50": 0.5903606838420221,
+      "AP50_95": 0.37109671849059167
+    },
+    "using_phone": {
+      "AP50": 0.045245908346972175,
+      "AP50_95": 0.01094606679824139
+    },
+    "reading_notes": {
+      "AP50": 0.3227095313076438,
+      "AP50_95": 0.12786713671903588
+    }
+  },
+  "framework_metrics": {
+    "metrics/precision(B)": 0.3536947208373947,
+    "metrics/recall(B)": 0.3718173075244396,
+    "metrics/mAP50(B)": 0.3227949713620391,
+    "metrics/mAP50-95(B)": 0.18986737311261076,
+    "fitness": 0.18986737311261076
+  },
+  "save_dir": "/projects/_hdd/4422/IE4422-MLLM-Project/outputs/yolo/detection_metrics/test",
+  "notes": "Includes phone boxes in detection AP; differs from flagging box metrics which exclude using_phone. Partially annotated SCB behaviours can count unannotated predictions as false positives. No test threshold/model selection."
+}
