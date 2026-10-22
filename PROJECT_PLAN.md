@@ -163,6 +163,7 @@ The model learns and is tested like a student: with **questions and answer keys*
 | **RQ1** | Does LoRA improve flagging over prompting alone, in both settings? | zero-shot vs few-shot vs LoRA; score lesson and exam settings separately | LoRA higher → training teaches cues that prompts cannot. Similar → prompting is enough. |
 | **RQ2** | Does the model use the text, or guess the setting from the photo? | **Text-switch test:** same photo, lesson text vs exam text. Do the answers change where the flag table says they should? Before and after LoRA. | Answers change → the model reads the text. No change → it uses the photo style (SCB = classrooms, Roboflow = exams). If LoRA makes this worse, try run B (Section6). |
 | **RQ3** | Is it safe enough for exams? | False-flag rate on exam photos with exam text: trained Qwen vs YOLO + flag table | Lower than YOLO → the VLM is safer for exams. Higher → state it as a limit for real use. |
+| **RQ4** | On a new dataset and an unseen setting (group work), how accurately does the image model find who is talking, and does the transcript give evidence the image alone cannot? | WTD groups 1–3, one frame every 2 s (decisions #42–#45): vision "talking" vs who really spoke (transcript timing), LoRA vs zero-shot; human vs Whisper transcript; speaking share vs WTD's CPS codes | Vision accurate → photos alone could serve group work. Vision weak → audio is needed for participation evidence. Whisper close to human → workable without hand transcripts. |
 
 **Headline claim, honest form:** "We test whether one VLM can serve lecturers and invigilators by text alone, whether LoRA helps, and whether it keeps using the text." Never claim more than the numbers show.
 
@@ -387,20 +388,41 @@ Main F1 = `known_f1` (lecture + exam, the trained settings). Participation = nev
 
 | Method | Main F1 | F1 lecture / exam | **F1 participation** | Switch rate (false) | `flip_acc` | Exam false-flag rate (precision) | Box recall | Valid JSON |
 |---|---|---|---|---|---|---|---|---|
-| YOLO + flag table | *pending* | | | n/a (no text) | | | | |
+| YOLO + flag table (conf 0.1, #46–#47) | 0.75 | 0.70 / 0.77 | 0.93 † | n/a (no text) ‡ | 0.87 | 24% (0.73) | **0.51** | 100% |
 | Qwen zero-shot | 0.10 | 0.04 / 0.16 | 0.80 | 0.65 (0.20) | 0.10 | 5% (0.89) | 0.09 | 99.9% |
 | Qwen few-shot (2) | 0.06 | 0.05 / 0.06 | 0.84 | 0.14 (0.18) | 0.21 | 0% (barely flags) | 0.06 | 98.5% |
 | Qwen zero-shot + rules in prompt | 0.40 | 0.29 / 0.44 | 0.89 | 0.40 (0.01) | 0.77 | 5% (0.88) | 0.09 | 100% |
 | **Qwen + LoRA (final checkpoint)** | **0.80** | **0.87 / 0.79** | **0.12** | **0.84 (0.04)** | **0.89** | 17% (0.81) | 0.09 | 98.4% |
 | Qwen + LoRA, reworded setting sentences (4,530 q.) | 0.45 | 0.78 / 0.34 | 0.10 | 0.05 (0.01) | 0.74 | 0% (1.00) | 0.06 | 98.3% |
 
+† YOLO's participation score comes from the participation column a person wrote in `rules.csv`, not from reading the sentence. ‡ YOLO's answer changes only through the flag table (switch rate 0.77, false switch 0.03); its reworded-sentence scores are identical to the normal ones because it never reads the text.
+
 **Findings (test)**
 - **RQ1:** fine-tuning beats every prompting baseline on the trained settings (0.80 vs 0.40 for rules-in-prompt).
 - **RQ2:** with the exact training sentences, LoRA switches its answer correctly 84% of the time (false switch 4%). With **reworded** sentences it almost stops switching (0.05): it learned the training sentences, not their meaning (exam F1 0.79 → 0.34).
 - **Participation (never trained):** LoRA 0.12 vs 0.80–0.89 for the untrained model. LoRA never points out hand-raising (0 / 489; it was always "do not point out" in training) but finds talking (0.89). The untrained model is the reverse: hand-raising 0.93, talking 0.00 in every setting.
 - **Overall:** fine-tuning specialises: it learns the trained rules well but loses flexibility to follow new or reworded instructions. Future work: train with several wordings per setting and a few participation examples.
-- **RQ3:** 17% of exam photos get at least one wrong flag (val: 40%); 41 photos only.
-- Boxes remain weak (box recall 0.09).
+- **RQ1 vs YOLO:** LoRA flags the right behaviours slightly better than YOLO + flag table (main F1 0.80 vs 0.75; precision 0.89 vs 0.85, recall 0.73 vs 0.67).
+- **RQ3:** 17% of exam photos get at least one wrong flag with LoRA vs 24% with YOLO (precision 0.81 vs 0.73); 41 photos only, so indicative.
+- **Boxes:** LoRA points at the right student far less often than YOLO (box recall 0.09 vs 0.51). LoRA's strength is the behaviour decision, not the location.
+
+### Results: collaboration extension (WTD groups 1–3, RQ4; fused 21 Oct)
+
+1,534 frames (4,602 student-frames), held-out group-work sentence, no training on WTD. Source: `results/metrics/wtd_*.json`, `docs/experiment_log.md`. Box check (LoRA, 20 frames): 55/60 boxes on the right student (4 hidden behind objects, 1 missed).
+
+| Vision model | Transcript | "Talking" precision | Recall | F1 |
+|---|---|---|---|---|
+| Qwen + LoRA | human (Oracle) | 0.28 | 0.43 | 0.33 |
+| Qwen + LoRA | our Whisper | 0.24 | 0.40 | 0.30 |
+| Qwen zero-shot | human (Oracle) | 0.30 | 0.51 | 0.38 |
+| Qwen zero-shot | our Whisper | 0.27 | 0.49 | 0.35 |
+
+**Findings (RQ4)**
+- **A single frame cannot show who is talking.** Students speak in ~33% of student-frames; both models' precision is below that (0.28 / 0.30). Speaking evidence has to come from audio; vision adds only what audio cannot (gaze, phone, hands).
+- **LoRA does not transfer better than zero-shot** to the unseen group-work setting (F1 0.33 vs 0.38), consistent with participation F1 0.12 on the photo test.
+- **Whisper instead of human transcripts costs 0.03–0.04 F1:** automatic transcripts are workable.
+- **CPS check:** speaking share and share of CPS-coded talk agree closely (Spearman 0.95, 9 students). Because 68–87% of every student's talk is CPS-coded, this mostly reflects that these lab groups stayed on task; it does not show that talk volume measures collaboration in general.
+- **Limits:** 3 lab groups / 9 students (proof of concept); only "talking" has an answer key, so attending, hand-raising and phone in the per-student report are evidence for review, not scored.
 
 ### Validation results so far (val, 642 questions; NOT the final numbers)
 
