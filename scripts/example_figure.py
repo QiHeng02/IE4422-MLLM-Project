@@ -118,6 +118,8 @@ def main() -> None:
     ap.add_argument("--reworded", type=Path, help="LoRA predictions on test_reworded.jsonl (adds panel D)")
     ap.add_argument("--para", type=int, default=1, help="which rewording for panel D (1 or 2)")
     ap.add_argument("--method", default="Qwen2.5-VL-3B + LoRA", help="name shown in the title")
+    ap.add_argument("--chosen-by", default="[state your rule]",
+                    help='how the photo was picked, e.g. "same photo as the YOLO example"')
     ap.add_argument("--out", type=Path)
     a = ap.parse_args()
 
@@ -202,7 +204,7 @@ def main() -> None:
         "Labels describe visible behaviour,",
         "not intent.",
         "", "Selected illustration, chosen by:",
-        "[state your rule]"]), fontsize=9, va="top")
+        *textwrap.wrap(a.chosen_by, 36)]), fontsize=9, va="top")
     fig.text(0.02, 0.01, "Image: test split. Roboflow exam_cheating (CC BY 4.0) or SCB (research use).",
              fontsize=8, color="#555555")
     fig.subplots_adjust(left=0.02, right=0.98, top=0.90, bottom=0.08, wspace=0.06, hspace=0.62)
