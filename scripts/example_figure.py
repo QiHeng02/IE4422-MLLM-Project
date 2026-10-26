@@ -3,6 +3,10 @@
 Step 1 - list candidate photos WITHOUT looking at any model output (avoids cherry-picking):
 
     python scripts/example_figure.py --list
+    python scripts/example_figure.py --list --key-has "reading notes,turning head" --sheet
+
+  --sheet saves numbered thumbnails (photos only, no model output) to
+  results/figures/example_candidates.jpg, so you can choose by eye.
 
   Candidates = test photos whose answer key CHANGES between lecture and closed-book exam
   (the RQ2 "switch" photos), exam-tagged Roboflow scenes first. Pick one by a rule you can state
@@ -65,7 +69,7 @@ def load_preds(path: Path | None, allowed) -> dict:
     return {p["qid"]: parse_answer(p.get("raw", ""), allowed) for p in read_jsonl(repo_path(path))}
 
 
-def list_candidates(qs: list[dict], exam_scenes: set[str]) -> None:
+def list_candidates(qs: list[dict], exam_scenes: set[str], key_has: str | None = None) -> list[tuple]:
     by = {}
     for q in qs:
         if q["context"] in ("lecture", "closed_book_exam"):
@@ -76,15 +80,36 @@ def list_candidates(qs: list[dict], exam_scenes: set[str]) -> None:
             continue
         lec, exa = d["lecture"], d["closed_book_exam"]
         kl, ke = behaviours(lec["gt"], lec["ignore"]), behaviours(exa["gt"], exa["ignore"])
-        if kl != ke:
+        if kl != ke and (not key_has or all(k in ", ".join(map(PRETTY, ke)) for k in key_has.split(","))):
             rows.append((lec.get("scene") not in exam_scenes, img, kl, ke))
     rows.sort()
     print(f"{len(rows)} test photos whose answer key changes between lecture and exam "
-          "(exam-tagged scenes first):")
-    for not_exam, img, kl, ke in rows:
+          f"(exam-tagged scenes first){' and whose exam key has ' + key_has if key_has else ''}:")
+    for i, (not_exam, img, kl, ke) in enumerate(rows, 1):
         tag = "   " if not_exam else "[exam scene]"
-        print(f"  {tag} {img}\n      key lecture: {', '.join(map(PRETTY, kl)) or 'no one'}"
+        print(f"  #{i:<3} {tag} {img}\n      key lecture: {', '.join(map(PRETTY, kl)) or 'no one'}"
               f"  |  key exam: {', '.join(map(PRETTY, ke)) or 'no one'}")
+    return rows
+
+
+def contact_sheet(rows: list[tuple], out: Path, n: int) -> None:
+    """Numbered thumbnails of the candidate photos ONLY (no model output), to choose by eye."""
+    from PIL import ImageDraw
+    tw, th, cols = 300, 225, 6
+    rows = rows[:n]
+    sheet = Image.new("RGB", (cols * tw, ((len(rows) + cols - 1) // cols) * (th + 34)), "white")
+    d = ImageDraw.Draw(sheet)
+    for i, (_, img, _, ke) in enumerate(rows):
+        with Image.open(repo_path(img)) as im:
+            im = im.convert("RGB")
+            im.thumbnail((tw - 8, th - 8))
+        x, y = (i % cols) * tw, (i // cols) * (th + 34)
+        sheet.paste(im, (x + 4, y + 4))
+        d.text((x + 6, y + th + 2), f"#{i + 1}  {Path(img).name[:30]}", fill="black")
+        d.text((x + 6, y + th + 16), f"exam key: {', '.join(map(PRETTY, ke))}", fill="#555555")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(out, quality=85)
+    print(f"saved {len(rows)} numbered thumbnails to {out}")
 
 
 def draw(ax, img, items: list[dict], ignore: list[str], title: str, below: list[str]) -> None:
@@ -113,6 +138,9 @@ def main() -> None:
     ap.add_argument("--reworded-questions", type=Path, default=None,
                     help="default: <questions_dir>/test_reworded.jsonl")
     ap.add_argument("--list", action="store_true", help="list candidate photos and stop (reads no predictions)")
+    ap.add_argument("--key-has", help='with --list: only photos whose exam key has these, e.g. "reading notes,turning head"')
+    ap.add_argument("--sheet", action="store_true", help="with --list: also save numbered thumbnails to choose by eye")
+    ap.add_argument("--max", type=int, default=60, help="with --sheet: at most this many thumbnails")
     ap.add_argument("--image", help="part of the image path that names exactly one test photo")
     ap.add_argument("--predictions", type=Path, help="LoRA predictions on test.jsonl")
     ap.add_argument("--reworded", type=Path, help="LoRA predictions on test_reworded.jsonl (adds panel D)")
@@ -133,7 +161,9 @@ def main() -> None:
         import csv
         exam = {r["scene"] for r in csv.DictReader(open(tags, encoding="utf-8"))
                 if (r.get("exam") or "").strip().lower() == "yes"} if tags.exists() else set()
-        list_candidates(qs, exam)
+        rows = list_candidates(qs, exam, a.key_has)
+        if a.sheet:
+            contact_sheet(rows, repo_path(Path(cfg["paths"]["results_dir"]) / "figures" / "example_candidates.jpg"), a.max)
         return
     if not (a.image and a.predictions):
         ap.error("give --image and --predictions (or --list first)")
